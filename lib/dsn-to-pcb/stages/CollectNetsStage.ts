@@ -97,35 +97,45 @@ export class CollectNetsStage extends ConverterStage {
       }
     }
 
-    // Create source_trace if there are connected ports
-    if (connectedPortIds.length >= 2) {
-      // Create source_port elements for each connected port
+    // Create source_trace if there are connected ports or if net has pins
+    if (connectedPortIds.length >= 2 || pinRefs.length >= 2) {
+      // Use existing source_port IDs from CollectPadsStage if available
       const sourcePortIds: string[] = []
 
-      for (let i = 0; i < connectedPortIds.length; i++) {
-        const pcbPortId = connectedPortIds[i]
-        const pinRef = pinRefs[i] || `pin_${i}`
-
-        // Create source_port
-        const sourcePortInserted = this.ctx.db.source_port.insert({
-          source_port_id: `${sourceNetId}_port_${i}`,
-          name: pinRef,
-        } as any)
-
-        sourcePortIds.push(sourcePortInserted.source_port_id)
+      for (const pinRef of pinRefs) {
+        // Look up source_port by pinRef
+        const existingPortId = this.findSourcePortByPinRef(pinRef)
+        if (existingPortId) {
+          sourcePortIds.push(existingPortId)
+        }
       }
 
       // Create source_trace connecting all ports
-      this.ctx.db.source_trace.insert({
+      const sourceTrace = this.ctx.db.source_trace.insert({
         connected_source_port_ids: sourcePortIds,
         connected_source_net_ids: [sourceNetId],
         display_name: netName,
       } as any)
+
+      // Store the mapping for trace creation
+      this.ctx.netNameToSourceTraceId!.set(netName, sourceTrace.source_trace_id)
+    }
+  }
+
+  /**
+   * Find source_port by pin reference.
+   * Pin reference format: "componentRef-pinId" (e.g., "R1-1", "U1-VCC")
+   */
+  private findSourcePortByPinRef(pinRef: string): string | undefined {
+    // Look through all source_ports to find matching one
+    const sourcePorts = this.ctx.db.source_port.list()
+
+    for (const port of sourcePorts) {
+      if ((port as any).name === pinRef) {
+        return (port as any).source_port_id
+      }
     }
 
-    // Update stats
-    if (this.ctx.stats) {
-      this.ctx.stats.nets = (this.ctx.stats.nets || 0) + 1
-    }
+    return undefined
   }
 }

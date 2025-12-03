@@ -55,8 +55,10 @@ export class InitializeDsnContextStage extends ConverterStage {
     // Initialize mappings
     this.ctx.imageIdToComponentIds = new Map()
     this.ctx.componentRefToId = new Map()
+    this.ctx.sourceComponentRefToId = new Map()
     this.ctx.padstackIdToInfo = new Map()
     this.ctx.netNameToId = new Map()
+    this.ctx.netNameToSourceTraceId = new Map()
     this.ctx.pinRefToPortId = new Map()
 
     // Build padstack lookup table from library
@@ -175,6 +177,31 @@ export class InitializeDsnContextStage extends ConverterStage {
             shape: "polygon",
             coordinates: polygon.coordinates || polygon._coordinates || [],
             layer: polygon.layer || polygon._layer,
+            width: polygon.width || polygon._width,
+          })
+          break
+        }
+
+        // Check for path (oval/pill pads)
+        if (child.token === "path") {
+          const path = child as any
+          const pathCoords = path.coordinates || path._coordinates || []
+          const pathWidth = path.width || path._width || 0
+
+          // For path shapes (oval/pill pads), width is the path width
+          // and height is calculated from path endpoints
+          let pathHeight = 0
+          if (pathCoords.length >= 4) {
+            const [x1, y1, x2, y2] = pathCoords
+            pathHeight = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+          }
+
+          this.ctx.padstackIdToInfo!.set(padstackId, {
+            shape: "rect", // Approximate as rect
+            width: pathWidth,
+            height: pathHeight || pathWidth,
+            layer: path.layer || path._layer,
+            coordinates: pathCoords,
           })
           break
         }
