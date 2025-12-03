@@ -76,6 +76,18 @@ export interface ConverterContext {
    * Format: "componentRef-pinId" -> "pcb_port_id"
    */
   pinRefToPortId?: Map<string, string>
+
+  /**
+   * Maps DSN component reference to source_component_id.
+   * Format: "componentRef" -> "source_component_id"
+   */
+  sourceComponentRefToId?: Map<string, string>
+
+  /**
+   * Maps DSN net name to source_trace_id.
+   * Populated by CollectNetsStage.
+   */
+  netNameToSourceTraceId?: Map<string, string>
 }
 
 /**

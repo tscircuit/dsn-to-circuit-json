@@ -4,13 +4,18 @@ import { expect, test } from "bun:test"
 import { convertDsnToCircuitJson } from "../lib/dsn-to-pcb/DsnToCircuitJsonConverter"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
-test("can convert empty_board.dsn to circuit json", async () => {
-  const dsnPath = resolve("demos/empty_board.dsn")
+test("can convert BBD_Mars-64.dsn to circuit json", async () => {
+  const dsnPath = resolve("demos/BBD_Mars-64.dsn")
   const content = await readFile(dsnPath, "utf-8")
 
   const circuitJson = convertDsnToCircuitJson(content)
 
   expect(circuitJson).toBeDefined()
+  Bun.write(
+    "./debug-output/bbd-mars.json",
+    JSON.stringify(circuitJson, null, 2),
+  )
+
   const svg = convertCircuitJsonToPcbSvg(circuitJson)
   expect(svg).toMatchSvgSnapshot(import.meta.path)
 })

@@ -2,7 +2,8 @@ import { ConverterStage } from "../types"
 import { applyToPoint, compose, rotate, translate } from "transformation-matrix"
 
 /**
- * CollectPadsStage creates pcb_smtpad and pcb_plated_hole elements from DSN library images.
+ * CollectPadsStage creates pcb_smtpad, pcb_plated_hole, source_port, and pcb_port
+ * elements from DSN library images.
  *
  * DSN Library Section:
  * (library
@@ -12,6 +13,8 @@ import { applyToPoint, compose, rotate, translate } from "transformation-matrix"
  *   (padstack <padstack_id>
  *     (shape (circle <layer> <diameter>))
  *     (shape (rect <layer> <x1> <y1> <x2> <y2>))
+ *     (shape (polygon <layer> <width> <x1> <y1> ... <xn> <yn>))
+ *     (shape (path <layer> <width> <x1> <y1> <x2> <y2>))
  *   )
  * )
  *
@@ -20,7 +23,8 @@ import { applyToPoint, compose, rotate, translate } from "transformation-matrix"
  * 2. For each image, processes its pins
  * 3. Looks up padstack info to determine pad shape
  * 4. Creates pcb_smtpad or pcb_plated_hole elements
- * 5. Creates pcb_port elements for net connectivity
+ * 5. Creates source_port elements (logical ports)
+ * 6. Creates pcb_port elements for net connectivity
  *
  * Pin positions are relative to the component origin.
  * Final pad position = component_position + rotated(pin_position)
@@ -41,8 +45,9 @@ export class CollectPadsStage extends ConverterStage {
       return false
     }
 
-    // Process each image (footprint)
-    for (const image of library.images || []) {
+    // Process each image (footprint) - dsnts uses _images and _imageId
+    const images = library.images
+    for (const image of images) {
       const imageId = image.imageId
       if (!imageId || this.processedImages.has(imageId)) continue
 
@@ -76,8 +81,9 @@ export class CollectPadsStage extends ConverterStage {
           }
         }
 
-        // Process each pin in the image
-        for (const pin of image.pins || []) {
+        // Process each pin in the image (dsnts uses _pins)
+        const pins = image.pins
+        for (const pin of pins) {
           this.processPin(
             pin,
             componentId,
@@ -108,20 +114,19 @@ export class CollectPadsStage extends ConverterStage {
     componentLayer: string,
     transformMatrix: any,
   ): void {
-    const padstackId = pin.padstackId
-    const pinId = pin.pinId
-    const pinX = pin.x ?? 0
-    const pinY = pin.y ?? 0
-    const pinRotation = pin.rotation ?? 0
+    // dsnts uses underscored properties
+    // DSN pin format: (pin <padstack_id> <pin_number> <x> <y>)
+    // dsnts parses: _padstackId, _x (pin number!), _y (x coord), _rotation (y coord)
+    const padstackId = pin.padstackId || pin._padstackId
+    const pinId = String(pin.pinId ?? pin._x ?? "") // _x is actually pin number
+    const pinX = pin.x ?? pin._y ?? 0 // _y is actually x coordinate
+    const pinY = pin.y ?? pin._rotation ?? 0 // _rotation is actually y coordinate
 
     if (!padstackId) return
 
     // Get padstack info
     const padstackInfo = this.ctx.padstackIdToInfo?.get(padstackId)
     if (!padstackInfo) {
-      this.ctx.warnings?.push(
-        `Unknown padstack: ${padstackId} for pin ${pinId}`,
-      )
       return
     }
 
@@ -155,16 +160,33 @@ export class CollectPadsStage extends ConverterStage {
       y: componentY + rotatedPinOffset.y,
     }
 
-    // Determine layer
+    // Determine layer from padstack or component
     const layer = this.mapLayer(padstackInfo.layer, componentLayer)
+
+    // Get the source_component_id for this component
+    const sourceComponentId = this.ctx.sourceComponentRefToId?.get(componentRef)
+
+    // Create source_port (logical port) first
+    const sourcePort = this.ctx.db.source_port.insert({
+      source_component_id: sourceComponentId,
+      name: `${componentRef}-${pinId}`,
+      pin_number: this.parsePinNumber(pinId),
+      port_hints: [pinId],
+    } as any)
+
+    let pcbSmtpadId: string | undefined
+    let pcbPlatedHoleId: string | undefined
 
     // Create pad based on shape
     if (padstackInfo.shape === "circle") {
       const diameter = (padstackInfo.diameter ?? 1000) * DSN_TO_MM_SCALE
 
-      // Check if this is a through-hole (has "hole" in padstack name)
-      if (padstackId.toLowerCase().includes("hole")) {
-        this.ctx.db.pcb_plated_hole.insert({
+      // Check if this is a through-hole (has "hole" in padstack name or is a via)
+      if (
+        padstackId.toLowerCase().includes("hole") ||
+        padstackId.toLowerCase().includes("through")
+      ) {
+        const platedHole = this.ctx.db.pcb_plated_hole.insert({
           pcb_component_id: componentId,
           x: padPosition.x,
           y: padPosition.y,
@@ -174,8 +196,9 @@ export class CollectPadsStage extends ConverterStage {
           layers: ["top", "bottom"],
           port_hints: [pinId],
         } as any)
+        pcbPlatedHoleId = platedHole.pcb_plated_hole_id
       } else {
-        this.ctx.db.pcb_smtpad.insert({
+        const smtpad = this.ctx.db.pcb_smtpad.insert({
           pcb_component_id: componentId,
           x: padPosition.x,
           y: padPosition.y,
@@ -184,12 +207,13 @@ export class CollectPadsStage extends ConverterStage {
           layer,
           port_hints: [pinId],
         } as any)
+        pcbSmtpadId = smtpad.pcb_smtpad_id
       }
     } else if (padstackInfo.shape === "rect") {
       const width = (padstackInfo.width ?? 1000) * DSN_TO_MM_SCALE
       const height = (padstackInfo.height ?? 1000) * DSN_TO_MM_SCALE
 
-      this.ctx.db.pcb_smtpad.insert({
+      const smtpad = this.ctx.db.pcb_smtpad.insert({
         pcb_component_id: componentId,
         x: padPosition.x,
         y: padPosition.y,
@@ -199,45 +223,71 @@ export class CollectPadsStage extends ConverterStage {
         layer,
         port_hints: [pinId],
       } as any)
+      pcbSmtpadId = smtpad.pcb_smtpad_id
     } else if (padstackInfo.shape === "polygon") {
+      // For polygon pads, calculate bounding box and use rect approximation
       const coords = padstackInfo.coordinates || []
-      const points: Array<{ x: number; y: number }> = []
 
-      for (let i = 0; i < coords.length; i += 2) {
-        if (coords[i] !== undefined && coords[i + 1] !== undefined) {
-          points.push({
-            x: padPosition.x + coords[i]! * DSN_TO_MM_SCALE,
-            y: padPosition.y - coords[i + 1]! * DSN_TO_MM_SCALE,
-          })
+      if (coords.length >= 4) {
+        let minX = Infinity
+        let maxX = -Infinity
+        let minY = Infinity
+        let maxY = -Infinity
+
+        for (let i = 0; i < coords.length; i += 2) {
+          if (coords[i] !== undefined && coords[i + 1] !== undefined) {
+            minX = Math.min(minX, coords[i]!)
+            maxX = Math.max(maxX, coords[i]!)
+            minY = Math.min(minY, coords[i + 1]!)
+            maxY = Math.max(maxY, coords[i + 1]!)
+          }
         }
-      }
 
-      if (points.length > 0) {
-        this.ctx.db.pcb_smtpad.insert({
+        const width = Math.abs(maxX - minX) * DSN_TO_MM_SCALE
+        const height = Math.abs(maxY - minY) * DSN_TO_MM_SCALE
+
+        const smtpad = this.ctx.db.pcb_smtpad.insert({
           pcb_component_id: componentId,
-          shape: "polygon",
-          points,
+          x: padPosition.x,
+          y: padPosition.y,
+          shape: "rect",
+          width: width || 0.1,
+          height: height || 0.1,
           layer,
           port_hints: [pinId],
         } as any)
+        pcbSmtpadId = smtpad.pcb_smtpad_id
       }
     }
 
     // Create pcb_port for net connectivity
     const pinRef = `${componentRef}-${pinId}`
-    const portInserted = this.ctx.db.pcb_port.insert({
+    const pcbPort = this.ctx.db.pcb_port.insert({
       pcb_component_id: componentId,
+      source_port_id: sourcePort.source_port_id,
+      pcb_smtpad_id: pcbSmtpadId,
+      pcb_plated_hole_id: pcbPlatedHoleId,
       x: padPosition.x,
       y: padPosition.y,
       layers: [layer],
     } as any)
 
-    this.ctx.pinRefToPortId!.set(pinRef, portInserted.pcb_port_id)
+    this.ctx.pinRefToPortId!.set(pinRef, pcbPort.pcb_port_id)
+  }
 
-    // Update stats
-    if (this.ctx.stats) {
-      this.ctx.stats.pads = (this.ctx.stats.pads || 0) + 1
+  /**
+   * Parse pin number from pin ID.
+   * Handles formats like "1", "Pad1", "A1", etc.
+   */
+  private parsePinNumber(pinId: string): number | undefined {
+    if (!pinId) return undefined
+
+    // Try to extract number from the pin ID
+    const match = pinId.match(/(\d+)/)
+    if (match) {
+      return parseInt(match[1]!, 10)
     }
+    return undefined
   }
 
   /**

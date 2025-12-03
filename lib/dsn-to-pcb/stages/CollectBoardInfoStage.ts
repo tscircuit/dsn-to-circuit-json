@@ -1,5 +1,6 @@
 import { ConverterStage } from "../types"
 import { applyToPoint } from "transformation-matrix"
+import type { PcbBoard } from "circuit-json"
 
 /**
  * CollectBoardInfoStage extracts board information from the DSN structure section.
@@ -22,10 +23,10 @@ import { applyToPoint } from "transformation-matrix"
  * {
  *   type: "pcb_board",
  *   center: { x, y },
- *   width: number,
- *   height: number,
+ *   width?: number,
+ *   height?: number,
  *   outline?: { x, y }[],
- *   num_layers?: number
+ *   num_layers: number
  * }
  */
 export class CollectBoardInfoStage extends ConverterStage {
@@ -43,7 +44,7 @@ export class CollectBoardInfoStage extends ConverterStage {
         center: { x: 0, y: 0 },
         width: 100,
         height: 100,
-      } as any)
+      } as PcbBoard)
       this.finished = true
       return false
     }
@@ -94,9 +95,6 @@ export class CollectBoardInfoStage extends ConverterStage {
       }
     }
 
-    // Calculate board dimensions from outline
-    let width = 100
-    let height = 100
     let centerX = 0
     let centerY = 0
 
@@ -108,8 +106,6 @@ export class CollectBoardInfoStage extends ConverterStage {
       const minY = Math.min(...ys)
       const maxY = Math.max(...ys)
 
-      width = maxX - minX
-      height = maxY - minY
       centerX = (minX + maxX) / 2
       centerY = (minY + maxY) / 2
     }
@@ -120,8 +116,7 @@ export class CollectBoardInfoStage extends ConverterStage {
     // Create pcb_board
     const boardData: any = {
       center: { x: centerX, y: centerY },
-      width,
-      height,
+      thickness: 1.4, // Standard PCB thickness in mm
       num_layers: numLayers,
     }
 
