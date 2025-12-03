@@ -1,10 +1,26 @@
 {
   "name": "dsn-to-circuit-json",
-  "module": "index.ts",
+  "module": "dist/index.js",
   "type": "module",
-  "private": true,
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tscircuit/dsn-to-circuit-json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "download-references": "bun run scripts/download-references.ts",
+    "download-demos": "bun run scripts/download-demos.ts",
+    "format": "biome format --write"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "bun-match-svg": "^0.0.14",
+    "dsnts": "^0.1.8",
+    "transformation-matrix": "^3.1.0",
+    "tscircuit": "^0.0.1012"
   },
   "peerDependencies": {
     "typescript": "^5"
