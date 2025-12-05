@@ -130,8 +130,7 @@ export class InitializeSesContextStage extends SesConverterStage {
   }
 
   /**
-   * Build a lookup table from padstack IDs to their shape information.
-   * This is used when creating vias to know the via dimensions.
+   * Build a lookup table from padstack IDs to their via diameter.
    */
   private buildPadstackLookup(): void {
     const { parsedSes } = this.ctx
@@ -142,11 +141,11 @@ export class InitializeSesContextStage extends SesConverterStage {
     for (const padstack of libraryOut.padstacks) {
       if (!padstack.padstackId) continue
 
-      // Get the first shape to determine pad info
+      // Get the first shape to determine via diameter
       const shape = padstack.shapes[0]
       if (!shape) continue
 
-      // Shape contains otherChildren with the actual shape elements (circle, rect, etc.)
+      // Shape contains otherChildren with circle elements for vias
       const shapeChildren = shape.otherChildren || []
       for (const child of shapeChildren) {
         if (child.token === "circle" || child.token === "circ") {
@@ -154,31 +153,6 @@ export class InitializeSesContextStage extends SesConverterStage {
           this.ctx.padstackIdToInfo!.set(padstack.padstackId, {
             shape: "circle",
             diameter: circleChild.diameter,
-            layer: String(circleChild.layer ?? ""),
-          })
-          break
-        } else if (child.token === "rect") {
-          const rectChild = child as any
-          this.ctx.padstackIdToInfo!.set(padstack.padstackId, {
-            shape: "rect",
-            width:
-              rectChild.x2 !== undefined && rectChild.x1 !== undefined
-                ? Math.abs(rectChild.x2 - rectChild.x1)
-                : undefined,
-            height:
-              rectChild.y2 !== undefined && rectChild.y1 !== undefined
-                ? Math.abs(rectChild.y2 - rectChild.y1)
-                : undefined,
-            layer: String(rectChild.layer ?? ""),
-          })
-          break
-        } else if (child.token === "polygon") {
-          const polygonChild = child as any
-          this.ctx.padstackIdToInfo!.set(padstack.padstackId, {
-            shape: "polygon",
-            width: polygonChild.apertureWidth,
-            coordinates: polygonChild.coordinates,
-            layer: String(polygonChild.layer ?? ""),
           })
           break
         }

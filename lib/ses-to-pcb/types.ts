@@ -52,18 +52,14 @@ export interface SesConverterContext {
   netNameToSourceTraceId?: Map<string, string>
 
   /**
-   * Maps padstack ID to pad shape information.
-   * Used for via dimensions.
+   * Maps padstack ID to via diameter.
+   * Vias are always circular.
    */
   padstackIdToInfo?: Map<
     string,
     {
-      shape: "circle" | "rect" | "polygon"
+      shape: "circle"
       diameter?: number
-      width?: number
-      height?: number
-      layer?: string
-      coordinates?: number[]
     }
   >
 }
