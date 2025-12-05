@@ -41,17 +41,6 @@ export interface SesConverterContext {
   netNameToId?: Map<string, string>
 
   /**
-   * Maps component-pin reference to pcb_port_id.
-   * Format: "componentRef-pinId" -> "pcb_port_id"
-   */
-  pinRefToPortId?: Map<string, string>
-
-  /**
-   * Maps DSN net name to source_trace_id.
-   */
-  netNameToSourceTraceId?: Map<string, string>
-
-  /**
    * Maps padstack ID to via diameter.
    * Vias are always circular.
    */
