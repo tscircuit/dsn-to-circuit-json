@@ -80,7 +80,6 @@ export class InitializeSesContextStage extends SesConverterStage {
 
     // Initialize mappings
     this.ctx.padstackIdToInfo = new Map()
-    this.ctx.netNameToId = new Map()
 
     // Build padstack lookup table from library_out
     this.buildPadstackLookup()

@@ -36,11 +36,6 @@ export interface SesConverterContext {
   sesUnit?: string
 
   /**
-   * Maps SES net name to source_net_id.
-   */
-  netNameToId?: Map<string, string>
-
-  /**
    * Maps padstack ID to via diameter.
    * Vias are always circular.
    */

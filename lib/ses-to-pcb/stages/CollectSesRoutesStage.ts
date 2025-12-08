@@ -145,13 +145,6 @@ export class CollectSesRoutesStage extends SesConverterStage {
     const netName = net.netName
     if (!netName) return
 
-    // Create source_net for this net
-    const sourceNet = this.ctx.db.source_net.insert({
-      name: netName,
-      member_source_group_ids: [],
-    })
-    this.ctx.netNameToId!.set(netName, sourceNet.source_net_id)
-
     // Process wire elements
     for (const wire of net.wires) {
       this.processWire(wire, netName, transformMatrix)
@@ -202,17 +195,10 @@ export class CollectSesRoutesStage extends SesConverterStage {
 
     // Create pcb_trace if we have route points
     if (route.length >= 2) {
-      const traceData: any = {
+      this.ctx.db.pcb_trace.insert({
         route,
         trace_length: this.calculateTraceLength(route),
-      }
-
-      const sourceNetId = this.ctx.netNameToId?.get(netName)
-      if (sourceNetId) {
-        traceData.source_net_id = sourceNetId
-      }
-
-      this.ctx.db.pcb_trace.insert(traceData)
+      })
     }
   }
 
