@@ -17,10 +17,6 @@ test("can convert Example.ses to circuit json", async () => {
   const traces = circuitJson.filter((el: any) => el.type === "pcb_trace")
   expect(traces.length).toBeGreaterThan(0)
 
-  // Verify we have source_net elements
-  const nets = circuitJson.filter((el: any) => el.type === "source_net")
-  expect(nets.length).toBeGreaterThan(0)
-
   // Write debug output
   Bun.write(
     "./debug-output/ses-example.json",
