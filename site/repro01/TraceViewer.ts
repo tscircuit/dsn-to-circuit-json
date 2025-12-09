@@ -368,26 +368,8 @@ export class TraceViewer extends BaseSolver {
           strokeColor: this.adjustColorOpacity(baseColor, opacity),
           strokeWidth: Math.max(segment.width, 0.5), // Ensure minimum visibility
           label: segment.traceId, // Shows on hover
+          layer: segment.layer,
         })
-      }
-
-      // Draw route points for visible segments
-      if (pointsToDraw > 0) {
-        for (let j = 0; j < pointsToDraw; j++) {
-          const point = segment.points[j]!
-          const isCurrentPoint =
-            isCurrentSegment && j === this.currentPointIndex
-
-          // Point radius proportional to scaled trace width
-          const pointRadius = Math.max(segment.width * 0.8, 0.5)
-
-          // graphics.circles!.push({
-          //   center: { x: point.x, y: point.y },
-          //   radius: isCurrentPoint ? pointRadius * 1.5 : pointRadius,
-          //   fill: isCurrentPoint ? "#fff" : baseColor,
-          //   stroke: "#000",
-          // })
-        }
       }
     }
 

@@ -1,5 +1,5 @@
 import { SesConverterStage } from "../types"
-import { compose, scale, translate } from "transformation-matrix"
+import { scale } from "transformation-matrix"
 import type { DsnCircle } from "dsnts"
 
 /**
@@ -69,14 +69,11 @@ export class InitializeSesContextStage extends SesConverterStage {
         scaleFactor = 0.0254 / resolutionValue
     }
 
-    // Calculate board center for translation (from placement if available)
-    const boardCenter = this.calculateBoardCenter()
-
-    // Build transform: translate to center, then scale
-    this.ctx.sesToCircuitJsonTransformMatrix = compose(
-      scale(scaleFactor, scaleFactor), // Scale
-      translate(-boardCenter.x, -boardCenter.y), // Center at origin
-    )
+    // For SES files, we do a direct coordinate conversion without centering.
+    // SES routes are meant to be applied on top of existing DSN placements,
+    // so we should preserve the original coordinate system.
+    // Only scale from SES units to mm.
+    this.ctx.sesToCircuitJsonTransformMatrix = scale(scaleFactor, scaleFactor)
 
     // Initialize mappings
     this.ctx.padstackIdToInfo = new Map()
@@ -86,44 +83,6 @@ export class InitializeSesContextStage extends SesConverterStage {
 
     this.finished = true
     return false
-  }
-
-  /**
-   * Calculate the center of the board from placements.
-   * Used for centering the board at origin in Circuit JSON.
-   */
-  private calculateBoardCenter(): { x: number; y: number } {
-    const { parsedSes } = this.ctx
-    const placement = parsedSes.placement
-
-    if (!placement) {
-      return { x: 0, y: 0 }
-    }
-
-    // Collect all placement coordinates
-    const xs: number[] = []
-    const ys: number[] = []
-
-    for (const component of placement.components) {
-      for (const place of component.places) {
-        if (place.x !== undefined) xs.push(place.x)
-        if (place.y !== undefined) ys.push(place.y)
-      }
-    }
-
-    if (xs.length === 0 || ys.length === 0) {
-      return { x: 0, y: 0 }
-    }
-
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs)
-    const minY = Math.min(...ys)
-    const maxY = Math.max(...ys)
-
-    return {
-      x: (minX + maxX) / 2,
-      y: (minY + maxY) / 2,
-    }
   }
 
   /**

@@ -4,6 +4,7 @@ import type { SesConverterContext, SesConverterStage } from "./types"
 import { parseSpectraSes } from "dsnts"
 import { InitializeSesContextStage } from "./stages/InitializeSesContextStage"
 import { CollectSesRoutesStage } from "./stages/CollectSesRoutesStage"
+import { GroupWiresIntoTracesStage } from "./stages/GroupWiresIntoTracesStage"
 import { PcbStitchTraceStage } from "./stages/PcbStitchTraceStage"
 import { PcbTraceCombineStage } from "./stages/PcbTraceCombineStage"
 
@@ -29,9 +30,10 @@ export interface SesToCircuitJsonConverterOptions {
  *
  * The conversion is performed in stages:
  * 1. InitializeSesContextStage - Set up coordinate transforms and mappings
- * 2. CollectSesRoutesStage - Create pcb_trace and pcb_via elements from routes
- * 3. PcbStitchTraceStage - Stitch traces that share endpoints into longer traces
- * 4. PcbTraceCombineStage - Combine trace segments based on port connectivity
+ * 2. CollectSesRoutesStage - Extract wire segments and vias from routes, grouped by net
+ * 3. GroupWiresIntoTracesStage - Group wires within each net into pcb_traces
+ * 4. PcbStitchTraceStage - Stitch traces that share endpoints into longer traces
+ * 5. PcbTraceCombineStage - Combine trace segments based on port connectivity
  *
  * Usage:
  * ```typescript
@@ -70,7 +72,8 @@ export class SesToCircuitJsonConverter {
     this.pipeline = [
       new InitializeSesContextStage(this.ctx),
       new CollectSesRoutesStage(this.ctx),
-      new PcbStitchTraceStage(this.ctx),
+      new GroupWiresIntoTracesStage(this.ctx),
+      // new PcbStitchTraceStage(this.ctx),
       // new PcbTraceCombineStage(this.ctx),
     ]
   }
