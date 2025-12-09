@@ -1,6 +1,7 @@
 import type { CircuitJsonUtilObjects } from "@tscircuit/circuit-json-util"
 import type { SpectraSes } from "dsnts"
 import type { Matrix } from "transformation-matrix"
+import type { CircuitJson } from "circuit-json"
 
 /**
  * Context object shared between all SES converter stages.
@@ -17,6 +18,12 @@ export interface SesConverterContext {
    * Circuit JSON utility objects for building the output
    */
   db: CircuitJsonUtilObjects
+
+  /**
+   * The original circuit JSON that was sent to the DSN converter.
+   * This contains port information needed to associate traces with ports.
+   */
+  originalCircuitJson?: CircuitJson
 
   /**
    * Transformation matrix from SES coordinates to Circuit JSON coordinates.

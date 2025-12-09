@@ -9,9 +9,9 @@ import { hslToHex } from "../utils/hslToHex"
 export type ColorMode = "layer" | "trace"
 
 /**
- * Input for the SesRoutesViewer
+ * Input for the TraceViewer
  */
-export interface SesRoutesViewerInput {
+export interface TraceViewerInput {
   traces: PcbTrace[]
   vias: PcbVia[]
   boardBounds?: {
@@ -26,7 +26,7 @@ export interface SesRoutesViewerInput {
 /**
  * Output from the SesRoutesViewer
  */
-export interface SesRoutesViewerOutput {
+export interface TraceViewerOutput {
   stats: {
     traceCount: number
     viaCount: number
@@ -37,7 +37,7 @@ export interface SesRoutesViewerOutput {
 }
 
 /**
- * SesRoutesViewer extends BaseSolver to visualize the output of CollectSesRoutesStage.
+ * TraceViewer extends BaseSolver to visualize the output of CollectSesRoutesStage.
  *
  * This viewer displays:
  * - pcb_trace elements as colored lines (different colors per layer)
@@ -50,8 +50,8 @@ export interface SesRoutesViewerOutput {
  * Note: Circuit JSON coordinates are in mm which are very small for visualization.
  * This viewer automatically scales coordinates to make them visible.
  */
-export class SesRoutesViewer extends BaseSolver {
-  private input: SesRoutesViewerInput
+export class TraceViewer extends BaseSolver {
+  private input: TraceViewerInput
   private currentTraceIndex = 0
   private currentPointIndex = 0
   private phase: "setup" | "animating" | "done" = "setup"
@@ -83,7 +83,7 @@ export class SesRoutesViewer extends BaseSolver {
   // Map of trace IDs to their assigned colors
   private traceColors: Map<string, string> = new Map()
 
-  constructor(input: SesRoutesViewerInput) {
+  constructor(input: TraceViewerInput) {
     super()
     this.input = input
     this.colorMode = input.colorMode || "layer"
@@ -444,14 +444,14 @@ export class SesRoutesViewer extends BaseSolver {
   /**
    * Get constructor params for serialization
    */
-  override getConstructorParams(): SesRoutesViewerInput {
+  override getConstructorParams(): TraceViewerInput {
     return this.input
   }
 
   /**
    * Get the output of the viewer
    */
-  override getOutput(): SesRoutesViewerOutput {
+  override getOutput(): TraceViewerOutput {
     let topLayerSegments = 0
     let bottomLayerSegments = 0
     let totalRoutePoints = 0

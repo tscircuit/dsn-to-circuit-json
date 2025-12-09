@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useCallback } from "react"
 import { GenericSolverDebugger } from "@tscircuit/solver-utils/react"
-import { SesRoutesViewer, type ColorMode } from "./SesRoutesViewer"
+import { TraceViewer, type ColorMode } from "./TraceViewer"
 import { convertSesToCircuitJson } from "../../lib/ses-to-pcb"
-import type { PcbTrace, PcbVia } from "circuit-json"
+import type { CircuitJson, PcbTrace, PcbVia } from "circuit-json"
+import originalCircuitJson from "./assets/motor-drive-breakout.json"
 
 const MOTOR_DRIVER_SES = `(session "tscircuit-b1ddda08-18f7-4058-9152-e1dab6654e38"
   (base_design "tscircuit-b1ddda08-18f7-4058-9152-e1dab6654e38")
@@ -908,13 +909,15 @@ const MOTOR_DRIVER_SES = `(session "tscircuit-b1ddda08-18f7-4058-9152-e1dab6654e
   )
 )`
 
-export default function SesRoutesViewerFixture() {
+export default function TraceViewer01Fixture() {
   const [colorMode, setColorMode] = useState<ColorMode>("layer")
   const [solverKey, setSolverKey] = useState(0)
-
+  
   const solver = useMemo(() => {
     try {
-      const circuitJson = convertSesToCircuitJson(MOTOR_DRIVER_SES)
+      const circuitJson = convertSesToCircuitJson(MOTOR_DRIVER_SES, {
+        originalCircuitJson: originalCircuitJson as CircuitJson,
+      })
 
       const traces = circuitJson.filter(
         (el): el is PcbTrace => el.type === "pcb_trace",
@@ -923,16 +926,16 @@ export default function SesRoutesViewerFixture() {
         (el): el is PcbVia => el.type === "pcb_via",
       )
 
-      return new SesRoutesViewer({
+      return new TraceViewer({
         traces,
         vias,
         colorMode,
       })
     } catch (e) {
       console.error("Failed to parse SES:", e)
-      return new SesRoutesViewer({ traces: [], vias: [], colorMode })
+      return new TraceViewer({ traces: [], vias: [], colorMode })
     }
-  }, [colorMode, solverKey])
+  }, [colorMode])
 
   const handleToggleColorMode = useCallback(() => {
     setColorMode((prev) => (prev === "layer" ? "trace" : "layer"))

@@ -4,6 +4,18 @@ import type { SesConverterContext, SesConverterStage } from "./types"
 import { parseSpectraSes } from "dsnts"
 import { InitializeSesContextStage } from "./stages/InitializeSesContextStage"
 import { CollectSesRoutesStage } from "./stages/CollectSesRoutesStage"
+import { PcbStitchTraceStage } from "./stages/PcbStitchTraceStage"
+import { PcbTraceCombineStage } from "./stages/PcbTraceCombineStage"
+
+/**
+ * Options for the SES to Circuit JSON converter.
+ */
+export interface SesToCircuitJsonConverterOptions {
+  /**
+   * This contains port information needed to associate traces with ports.
+   */
+  originalCircuitJson?: CircuitJson
+}
 
 /**
  * Converts a Specctra SES (Session) file to Circuit JSON format.
@@ -17,11 +29,13 @@ import { CollectSesRoutesStage } from "./stages/CollectSesRoutesStage"
  *
  * The conversion is performed in stages:
  * 1. InitializeSesContextStage - Set up coordinate transforms and mappings
- * 3. CollectSesRoutesStage - Create pcb_trace and pcb_via elements from routes
+ * 2. CollectSesRoutesStage - Create pcb_trace and pcb_via elements from routes
+ * 3. PcbStitchTraceStage - Stitch traces that share endpoints into longer traces
+ * 4. PcbTraceCombineStage - Combine trace segments based on port connectivity
  *
  * Usage:
  * ```typescript
- * const converter = new SesToCircuitJsonConverter(sesString)
+ * const converter = new SesToCircuitJsonConverter(sesString, { originalCircuitJson })
  * converter.runUntilFinished()
  * const circuitJson = converter.getOutput()
  * ```
@@ -39,8 +53,9 @@ export class SesToCircuitJsonConverter {
   /**
    * Create a new converter from a SES string.
    * @param sesString - The raw SES file content as a string
+   * @param options - Optional configuration including original circuit JSON
    */
-  constructor(sesString: string) {
+  constructor(sesString: string, options?: SesToCircuitJsonConverterOptions) {
     // Parse the SES file using dsnts parseSpectraSes
     const parsedSes = parseSpectraSes(sesString)
 
@@ -48,12 +63,15 @@ export class SesToCircuitJsonConverter {
     this.ctx = {
       parsedSes,
       db: cju([]), // Start with empty circuit JSON
+      originalCircuitJson: options?.originalCircuitJson,
     }
 
     // Set up the conversion pipeline
     this.pipeline = [
       new InitializeSesContextStage(this.ctx),
       new CollectSesRoutesStage(this.ctx),
+      new PcbStitchTraceStage(this.ctx),
+      // new PcbTraceCombineStage(this.ctx),
     ]
   }
 
@@ -96,10 +114,14 @@ export class SesToCircuitJsonConverter {
 /**
  * Convenience function to convert a SES string to Circuit JSON.
  * @param sesString - The raw SES file content as a string
+ * @param options - Optional configuration including original circuit JSON
  * @returns The converted Circuit JSON array
  */
-export function convertSesToCircuitJson(sesString: string): CircuitJson {
-  const converter = new SesToCircuitJsonConverter(sesString)
+export function convertSesToCircuitJson(
+  sesString: string,
+  options?: SesToCircuitJsonConverterOptions,
+): CircuitJson {
+  const converter = new SesToCircuitJsonConverter(sesString, options)
   converter.runUntilFinished()
   return converter.getOutput()
 }
