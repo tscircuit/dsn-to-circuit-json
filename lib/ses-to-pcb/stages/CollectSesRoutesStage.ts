@@ -1,10 +1,10 @@
-import type { LayerRef, PcbTrace, PcbTraceRoutePointVia } from "circuit-json"
-import { SesConverterStage } from "../types"
+import type { LayerRef } from "circuit-json"
+import { SesConverterStage, type WireSegment, type ViaInfo } from "../types"
 import { applyToPoint } from "transformation-matrix"
 import type { SesNet, SesVia, SesWire } from "dsnts"
 
 /**
- * CollectSesRoutesStage creates pcb_trace and pcb_via elements from SES routes section.
+ * CollectSesRoutesStage extracts wire segments and vias from the SES routes section.
  *
  * SES Routes Section structure:
  * (routes
@@ -25,16 +25,13 @@ import type { SesNet, SesVia, SesWire } from "dsnts"
  *
  * This stage:
  * 1. Processes network_out section for nets
- * 2. Processes wire elements to create pcb_trace elements
- * 3. Processes via elements to create pcb_via elements
- * 4. Associates traces and vias with their nets
+ * 2. Extracts wire segments and stores them in ctx.wireSegmentsByNet
+ * 3. Extracts via information and stores them in ctx.viasByNet
+ * 4. Creates pcb_via elements in the database
+ *
+ * Wire grouping into pcb_traces is handled by the GroupWiresIntoTracesStage.
  */
 export class CollectSesRoutesStage extends SesConverterStage {
-  private viasByNet = new Map<
-    string,
-    Array<{ x: number; y: number; fromLayer: LayerRef; toLayer: LayerRef }>
-  >()
-
   step(): boolean {
     const { parsedSes, sesToCircuitJsonTransformMatrix } = this.ctx
 
@@ -48,12 +45,11 @@ export class CollectSesRoutesStage extends SesConverterStage {
       return false
     }
 
-    // First pass: collect vias
-    for (const net of networkOut.nets) {
-      this.collectVias(net, sesToCircuitJsonTransformMatrix)
-    }
+    // Initialize context maps
+    this.ctx.wireSegmentsByNet = new Map()
+    this.ctx.viasByNet = new Map()
 
-    // Second pass: process nets and create traces
+    // Process all nets
     for (const net of networkOut.nets) {
       this.processNet(net, sesToCircuitJsonTransformMatrix)
     }
@@ -63,38 +59,93 @@ export class CollectSesRoutesStage extends SesConverterStage {
   }
 
   /**
-   * Collect all vias from a net.
+   * Process a single net: extract wire segments and vias.
    */
-  private collectVias(net: SesNet, transformMatrix: any): void {
+  private processNet(net: SesNet, transformMatrix: any): void {
     const netName = net.netName
     if (!netName) return
 
+    // Collect wire segments
+    const wireSegments: WireSegment[] = []
+    for (const wire of net.wires) {
+      const segment = this.extractWireSegment(wire, transformMatrix)
+      if (segment && segment.points.length >= 2) {
+        wireSegments.push(segment)
+      }
+    }
+
+    if (wireSegments.length > 0) {
+      this.ctx.wireSegmentsByNet!.set(netName, wireSegments)
+    }
+
+    // Collect vias
+    const vias: ViaInfo[] = []
     for (const via of net.vias) {
-      this.collectVia(via, netName, transformMatrix)
+      const viaInfo = this.extractVia(via, transformMatrix)
+      if (viaInfo) {
+        vias.push(viaInfo)
+        // Also create pcb_via element in database
+        this.createPcbVia(via, viaInfo)
+      }
+    }
+
+    if (vias.length > 0) {
+      this.ctx.viasByNet!.set(netName, vias)
     }
   }
 
   /**
-   * Collect a single via.
+   * Extract a wire segment's points, layer, and width.
    */
-  private collectVia(via: SesVia, netName: string, transformMatrix: any): void {
+  private extractWireSegment(
+    wire: SesWire,
+    transformMatrix: any,
+  ): WireSegment | null {
+    const path = wire.path
+    if (!path) return null
+
+    const layerRef = this.mapLayer(path.layer)
+    const widthMm = this.convertToMm(path.width ?? 0)
+    const points: Array<{ x: number; y: number }> = []
+    const coords = path.coordinates
+
+    for (let i = 0; i < coords.length; i += 2) {
+      if (coords[i] !== undefined && coords[i + 1] !== undefined) {
+        const transformed = applyToPoint(transformMatrix, {
+          x: coords[i]!,
+          y: coords[i + 1]!,
+        })
+        points.push({
+          x: Number(transformed.x.toFixed(4)),
+          y: Number(transformed.y.toFixed(4)),
+        })
+      }
+    }
+
+    return { points, layer: layerRef, width: widthMm }
+  }
+
+  /**
+   * Extract via information.
+   */
+  private extractVia(via: SesVia, transformMatrix: any): ViaInfo | null {
     const transformed = applyToPoint(transformMatrix, {
       x: via.x ?? 0,
       y: via.y ?? 0,
     })
 
-    if (!this.viasByNet.has(netName)) {
-      this.viasByNet.set(netName, [])
-    }
-
-    this.viasByNet.get(netName)!.push({
+    return {
       x: Number(transformed.x.toFixed(4)),
       y: Number(transformed.y.toFixed(4)),
       fromLayer: "top",
       toLayer: "bottom",
-    })
+    }
+  }
 
-    // Create pcb_via element
+  /**
+   * Create a pcb_via element in the database.
+   */
+  private createPcbVia(via: SesVia, viaInfo: ViaInfo): void {
     let outerDiameter = 0.6 // Default 600μm
     let holeDiameter = 0.3 // Default 300μm
 
@@ -109,8 +160,8 @@ export class CollectSesRoutesStage extends SesConverterStage {
     }
 
     this.ctx.db.pcb_via.insert({
-      x: Number(transformed.x.toFixed(4)),
-      y: Number(transformed.y.toFixed(4)),
+      x: viaInfo.x,
+      y: viaInfo.y,
       outer_diameter: outerDiameter,
       hole_diameter: holeDiameter,
       layers: ["top", "bottom"],
@@ -136,125 +187,6 @@ export class CollectSesRoutesStage extends SesConverterStage {
       default:
         return (value * 0.0254) / resolutionValue
     }
-  }
-
-  /**
-   * Process a single net and create traces from its wires.
-   */
-  private processNet(net: SesNet, transformMatrix: any): void {
-    const netName = net.netName
-    if (!netName) return
-
-    // Process wire elements
-    for (const wire of net.wires) {
-      this.processWire(wire, netName, transformMatrix)
-    }
-  }
-
-  /**
-   * Process a wire element and create pcb_trace.
-   */
-  private processWire(
-    wire: SesWire,
-    netName: string,
-    transformMatrix: any,
-  ): void {
-    const path = wire.path
-    if (!path) return
-
-    // Map layer number to name
-    const layerRef = this.mapLayer(path.layer)
-
-    // Convert width from SES units to mm
-    const widthMm = this.convertToMm(path.width ?? 0)
-
-    // Build route points
-    const route: PcbTrace["route"] = []
-    const coords = path.coordinates
-
-    for (let i = 0; i < coords.length; i += 2) {
-      if (coords[i] !== undefined && coords[i + 1] !== undefined) {
-        const transformed = applyToPoint(transformMatrix, {
-          x: coords[i]!,
-          y: coords[i + 1]!,
-        })
-
-        route.push({
-          route_type: "wire",
-          x: Number(transformed.x.toFixed(4)),
-          y: Number(transformed.y.toFixed(4)),
-          width: Number(widthMm.toFixed(4)),
-          layer: layerRef,
-        })
-      }
-    }
-
-    // Insert vias at matching points
-    const vias = this.viasByNet.get(netName) || []
-    this.insertViasIntoRoute(route, vias)
-
-    // Create pcb_trace if we have route points
-    if (route.length >= 2) {
-      this.ctx.db.pcb_trace.insert({
-        route,
-        trace_length: this.calculateTraceLength(route),
-      })
-    }
-  }
-
-  /**
-   * Insert via points into route at matching coordinates.
-   */
-  private insertViasIntoRoute(
-    route: PcbTrace["route"],
-    vias: Array<{
-      x: number
-      y: number
-      fromLayer: LayerRef
-      toLayer: LayerRef
-    }>,
-  ): void {
-    for (const via of vias) {
-      for (let i = 0; i < route.length; i++) {
-        const point = route[i]!
-        if (
-          Math.abs(point.x - via.x) < 0.001 &&
-          Math.abs(point.y - via.y) < 0.001
-        ) {
-          // Insert via point after the matching point
-          const viaPoint: PcbTraceRoutePointVia = {
-            route_type: "via",
-            x: via.x,
-            y: via.y,
-            from_layer: via.fromLayer,
-            to_layer: via.toLayer,
-          }
-          route.splice(i + 1, 0, viaPoint)
-          i++ // Skip the inserted via
-        }
-      }
-    }
-  }
-
-  /**
-   * Calculate the total length of a trace route.
-   */
-  private calculateTraceLength(route: PcbTrace["route"]): number {
-    let length = 0
-
-    for (let i = 0; i < route.length - 1; i++) {
-      const p1 = route[i]!
-      const p2 = route[i + 1]!
-
-      // Skip via points in length calculation
-      if (p2.route_type === "via") continue
-
-      const dx = p2.x - p1.x
-      const dy = p2.y - p1.y
-      length += Math.sqrt(dx * dx + dy * dy)
-    }
-
-    return Number(length.toFixed(4))
   }
 
   /**
