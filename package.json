@@ -20,12 +20,13 @@
     "start": "cosmos"
   },
   "devDependencies": {
+    "@react-hook/resize-observer": "^2.0.2",
     "@types/bun": "latest",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "bun-match-svg": "^0.0.14",
-    "dsnts": "^0.1.9",
+    "dsnts": "^0.1.10",
     "react": "^19.2.1",
     "react-cosmos": "^7.0.0",
     "react-cosmos-plugin-vite": "^7.0.0",
