@@ -912,7 +912,7 @@ const MOTOR_DRIVER_SES = `(session "tscircuit-b1ddda08-18f7-4058-9152-e1dab6654e
 export default function TraceViewer01Fixture() {
   const [colorMode, setColorMode] = useState<ColorMode>("layer")
   const [solverKey, setSolverKey] = useState(0)
-  
+
   const solver = useMemo(() => {
     try {
       const circuitJson = convertSesToCircuitJson(MOTOR_DRIVER_SES, {

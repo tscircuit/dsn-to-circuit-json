@@ -10,17 +10,21 @@ interface TraceWithEndpoints {
   endKey: string
   startPoint: { x: number; y: number }
   endPoint: { x: number; y: number }
+  startLayer: string
+  endLayer: string
   merged: boolean
 }
 
 /**
- * PcbStitchTraceStage stitches together pcb_traces that share endpoints.
+ * PcbStitchTraceStage stitches together pcb_traces that share endpoints on the same layer.
  *
  * For example:
- * - pcb_trace_1: [{x1, y1}, {x2, y2}]
- * - pcb_trace_2: [{x2, y2}, {x3, y3}]
+ * - pcb_trace_1: [{x1, y1, layer: "top"}, {x2, y2, layer: "top"}]
+ * - pcb_trace_2: [{x2, y2, layer: "top"}, {x3, y3, layer: "top"}]
  * Result:
- * - pcb_trace_1: [{x1, y1}, {x2, y2}, {x3, y3}]
+ * - pcb_trace_1: [{x1, y1, layer: "top"}, {x2, y2, layer: "top"}, {x3, y3, layer: "top"}]
+ *
+ * Traces on different layers at the same position will NOT be stitched together.
  *
  * This stage runs before PcbTraceCombineStage to reduce the number of
  * individual trace segments that need to be combined.
@@ -77,13 +81,16 @@ export class PcbStitchTraceStage extends SesConverterStage {
 
       if (wirePoints.length < 2) continue
 
+      const firstWire = wirePoints[0]!
+      const lastWire = wirePoints[wirePoints.length - 1]!
+
       const startPoint = {
-        x: wirePoints[0]!.x,
-        y: wirePoints[0]!.y,
+        x: firstWire.x,
+        y: firstWire.y,
       }
       const endPoint = {
-        x: wirePoints[wirePoints.length - 1]!.x,
-        y: wirePoints[wirePoints.length - 1]!.y,
+        x: lastWire.x,
+        y: lastWire.y,
       }
 
       result.push({
@@ -92,6 +99,8 @@ export class PcbStitchTraceStage extends SesConverterStage {
         endKey: this.pointKey(endPoint.x, endPoint.y),
         startPoint,
         endPoint,
+        startLayer: firstWire.layer,
+        endLayer: lastWire.layer,
         merged: false,
       })
     }
@@ -100,7 +109,7 @@ export class PcbStitchTraceStage extends SesConverterStage {
   }
 
   /**
-   * Stitch traces that share endpoints.
+   * Stitch traces that share endpoints on the same layer.
    */
   private stitchTraces(traces: TraceWithEndpoints[]): PcbTrace[] {
     const result: PcbTrace[] = []
@@ -129,6 +138,9 @@ export class PcbStitchTraceStage extends SesConverterStage {
       let currentRoute = [...traceData.trace.route]
       traceData.merged = true
 
+      // Track current endpoint layer for layer-aware stitching
+      let currentEndLayer = traceData.endLayer
+
       // Try to extend in the "end" direction
       let currentEndKey = traceData.endKey
       let extended = true
@@ -136,16 +148,19 @@ export class PcbStitchTraceStage extends SesConverterStage {
       while (extended) {
         extended = false
 
-        // Find traces that start where this one ends
+        // Find traces that start where this one ends (and same layer)
         const candidates = startIndex.get(currentEndKey) || []
         for (const candidate of candidates) {
           if (candidate.merged) continue
           if (candidate === traceData) continue
+          // Only stitch if layers match
+          if (candidate.startLayer !== currentEndLayer) continue
 
           // Stitch: append candidate's route (skip first point to avoid duplicate)
           currentRoute = this.appendRoute(currentRoute, candidate.trace.route)
           candidate.merged = true
           currentEndKey = candidate.endKey
+          currentEndLayer = candidate.endLayer
           extended = true
           break
         }
@@ -156,6 +171,8 @@ export class PcbStitchTraceStage extends SesConverterStage {
           for (const candidate of reverseCandidates) {
             if (candidate.merged) continue
             if (candidate === traceData) continue
+            // Only stitch if layers match (candidate's end connects to our end)
+            if (candidate.endLayer !== currentEndLayer) continue
 
             // Stitch: append reversed candidate's route (skip first point)
             currentRoute = this.appendRoute(
@@ -164,11 +181,15 @@ export class PcbStitchTraceStage extends SesConverterStage {
             )
             candidate.merged = true
             currentEndKey = candidate.startKey
+            currentEndLayer = candidate.startLayer
             extended = true
             break
           }
         }
       }
+
+      // Track current start layer for layer-aware stitching
+      let currentStartLayer = traceData.startLayer
 
       // Try to extend in the "start" direction
       let currentStartKey = traceData.startKey
@@ -177,16 +198,19 @@ export class PcbStitchTraceStage extends SesConverterStage {
       while (extended) {
         extended = false
 
-        // Find traces that end where this one starts
+        // Find traces that end where this one starts (and same layer)
         const candidates = endIndex.get(currentStartKey) || []
         for (const candidate of candidates) {
           if (candidate.merged) continue
           if (candidate === traceData) continue
+          // Only stitch if layers match
+          if (candidate.endLayer !== currentStartLayer) continue
 
           // Stitch: prepend candidate's route (skip last point to avoid duplicate)
           currentRoute = this.prependRoute(candidate.trace.route, currentRoute)
           candidate.merged = true
           currentStartKey = candidate.startKey
+          currentStartLayer = candidate.startLayer
           extended = true
           break
         }
@@ -197,6 +221,8 @@ export class PcbStitchTraceStage extends SesConverterStage {
           for (const candidate of reverseCandidates) {
             if (candidate.merged) continue
             if (candidate === traceData) continue
+            // Only stitch if layers match (candidate's start connects to our start)
+            if (candidate.startLayer !== currentStartLayer) continue
 
             // Stitch: prepend reversed candidate's route (skip last point)
             currentRoute = this.prependRoute(
@@ -205,6 +231,7 @@ export class PcbStitchTraceStage extends SesConverterStage {
             )
             candidate.merged = true
             currentStartKey = candidate.endKey
+            currentStartLayer = candidate.endLayer
             extended = true
             break
           }
