@@ -1,6 +1,12 @@
 import { BaseSolver } from "@tscircuit/solver-utils"
 import type { GraphicsObject } from "graphics-debug"
 import type { PcbTrace, PcbVia, LayerRef } from "circuit-json"
+import { hslToHex } from "../utils/hslToHex"
+
+/**
+ * Color mode for visualization
+ */
+export type ColorMode = "layer" | "trace"
 
 /**
  * Input for the SesRoutesViewer
@@ -14,6 +20,7 @@ export interface SesRoutesViewerInput {
     maxX: number
     maxY: number
   }
+  colorMode?: ColorMode
 }
 
 /**
@@ -49,6 +56,9 @@ export class SesRoutesViewer extends BaseSolver {
   private currentPointIndex = 0
   private phase: "setup" | "animating" | "done" = "setup"
 
+  // Color mode: "layer" colors by layer, "trace" colors by pcb_trace
+  colorMode: ColorMode = "layer"
+
   // Scale factor to make small mm coordinates visible
   // Circuit JSON uses mm, typical traces are 0.1-0.5mm apart
   // We scale up by 100x to make them ~10-50 units apart
@@ -70,9 +80,46 @@ export class SesRoutesViewer extends BaseSolver {
     hole_diameter: number
   }> = []
 
+  // Map of trace IDs to their assigned colors
+  private traceColors: Map<string, string> = new Map()
+
   constructor(input: SesRoutesViewerInput) {
     super()
     this.input = input
+    this.colorMode = input.colorMode || "layer"
+  }
+
+  /**
+   * Generate a color for a trace based on its index using golden ratio distribution.
+   * This ensures maximum visual separation between colors regardless of how many traces exist.
+   */
+  private generateColorFromIndex(index: number, total: number): string {
+    // Golden ratio conjugate for optimal hue distribution
+    const GOLDEN_RATIO_CONJUGATE = 0.618033988749895
+
+    // Distribute hue using golden ratio - this ensures adjacent indices
+    // get maximally different hues
+    const hue = ((index * GOLDEN_RATIO_CONJUGATE) % 1) * 360
+
+    // Vary saturation and lightness slightly based on index to add more distinction
+    const saturation = 70 + (index % 3) * 10 // 70%, 80%, or 90%
+    const lightness = 45 + (index % 4) * 5 // 45%, 50%, 55%, or 60%
+
+    return hslToHex(hue, saturation, lightness)
+  }
+
+  /**
+   * Toggle between color modes
+   */
+  toggleColorMode(): void {
+    this.colorMode = this.colorMode === "layer" ? "trace" : "layer"
+  }
+
+  /**
+   * Set the color mode
+   */
+  setColorMode(mode: ColorMode): void {
+    this.colorMode = mode
   }
 
   override _setup(): void {
@@ -82,10 +129,31 @@ export class SesRoutesViewer extends BaseSolver {
     // Scale vias for visualization
     this.scaleVias()
 
+    // Assign colors to each unique trace ID
+    this.assignTraceColors()
+
     // Calculate board bounds from scaled data
     this.calculateBoardBounds()
 
     this.phase = "animating"
+  }
+
+  /**
+   * Assign unique colors to each trace using golden ratio distribution
+   */
+  private assignTraceColors(): void {
+    const uniqueTraceIds: string[] = []
+    for (const segment of this.traceSegments) {
+      if (!uniqueTraceIds.includes(segment.traceId)) {
+        uniqueTraceIds.push(segment.traceId)
+      }
+    }
+
+    const total = uniqueTraceIds.length
+    for (let i = 0; i < total; i++) {
+      const traceId = uniqueTraceIds[i]!
+      this.traceColors.set(traceId, this.generateColorFromIndex(i, total))
+    }
   }
 
   /**
@@ -263,8 +331,6 @@ export class SesRoutesViewer extends BaseSolver {
     const layerColors: Record<string, string> = {
       top: "#e74c3c", // Red for top layer
       bottom: "#3498db", // Blue for bottom layer
-      inner1: "#2ecc71",
-      inner2: "#f39c12",
     }
 
     // Draw all trace segments
@@ -273,7 +339,11 @@ export class SesRoutesViewer extends BaseSolver {
       const isCurrentSegment = i === this.currentTraceIndex
       const isPastSegment = i < this.currentTraceIndex
 
-      const baseColor = layerColors[segment.layer] || "#666"
+      // Get color based on color mode
+      const baseColor =
+        this.colorMode === "trace"
+          ? this.traceColors.get(segment.traceId) || "#666"
+          : layerColors[segment.layer] || "#666"
       const opacity = isPastSegment ? 1 : isCurrentSegment ? 0.8 : 0.3
 
       // Determine how many points to draw for current segment
@@ -297,6 +367,7 @@ export class SesRoutesViewer extends BaseSolver {
           points: linePoints,
           strokeColor: this.adjustColorOpacity(baseColor, opacity),
           strokeWidth: Math.max(segment.width, 0.5), // Ensure minimum visibility
+          label: segment.traceId, // Shows on hover
         })
       }
 
