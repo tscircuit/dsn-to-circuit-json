@@ -4,15 +4,15 @@ import { TraceViewer, type ColorMode } from "../TraceViewer"
 import { convertSesToCircuitJson } from "../../lib/ses-to-pcb"
 import type { CircuitJson, PcbTrace, PcbVia } from "circuit-json"
 // @ts-ignore
-import MOTOR_DRIVER_SES from "./assets/output.ses?raw"
+import LGA51x4_net15_bottom_only_SES from "./assets/LGA51x4_net15_bottom_only.ses?raw"
 
-export default function TraceViewer01Fixture() {
+export default function LGA51x4_net15_bottom_onlyFixture() {
   const [colorMode, setColorMode] = useState<ColorMode>("layer")
   const [solverKey, setSolverKey] = useState(0)
 
   const solver = useMemo(() => {
     try {
-      const circuitJson = convertSesToCircuitJson(MOTOR_DRIVER_SES)
+      const circuitJson = convertSesToCircuitJson(LGA51x4_net15_bottom_only_SES)
 
       const traces = circuitJson.filter(
         (el): el is PcbTrace => el.type === "pcb_trace",

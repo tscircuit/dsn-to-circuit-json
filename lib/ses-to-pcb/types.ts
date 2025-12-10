@@ -39,12 +39,6 @@ export interface SesConverterContext {
   db: CircuitJsonUtilObjects
 
   /**
-   * The original circuit JSON that was sent to the DSN converter.
-   * This contains port information needed to associate traces with ports.
-   */
-  originalCircuitJson?: CircuitJson
-
-  /**
    * Transformation matrix from SES coordinates to Circuit JSON coordinates.
    * SES typically uses mils, Circuit JSON uses millimeters (mm).
    */
