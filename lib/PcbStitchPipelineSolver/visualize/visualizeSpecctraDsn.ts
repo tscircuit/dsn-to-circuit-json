@@ -8,8 +8,8 @@ export const PAD_LAYER_COLORS = {
   drill: "#ff69b4", // Hot pink for drill layer
 }
 
-export const visualizeTraces = (
-  dsnTs: SpectraDsn[],
+export const visualizeSpecctraDsn = (
+  dsn: SpectraDsn,
   opts?: {},
 ): GraphicsObject => {
   const graphics: GraphicsObject = {
