@@ -1,7 +1,7 @@
 import { BaseSolver } from "@tscircuit/solver-utils"
 import type { GraphicsObject } from "graphics-debug"
 import type { PcbTrace, PcbVia, LayerRef } from "circuit-json"
-import { hslToHex } from "../utils/hslToHex"
+import { hslToHex } from "./utils/hslToHex"
 
 /**
  * Color mode for visualization

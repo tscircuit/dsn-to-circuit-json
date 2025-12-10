@@ -1,0 +1,175 @@
+(pcb ./converted_dsn.dsn
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+    (host_cad "KiCad's Pcbnew")
+    (host_version "")
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu
+      (type signal)
+      (property
+        (index 0)
+      )
+    )
+    (layer B.Cu
+      (type signal)
+      (property
+        (index 1)
+      )
+    )
+    (boundary
+      (path pcb 0  -19780 -5810.000000000001 19780 -5810.000000000001 19780 5810.000000000001 -19780 5810.000000000001 -19780 -5810.000000000001)
+    )
+    (via "Via[0-1]_600:300_um")
+    (rule
+      (width 200)
+      (clearance 150)
+      (clearance 50 (type smd_smd))
+    )
+  )
+  (placement
+    (component "simple_pinout:37.1600x9.2200_mm"
+      (place U1_source_component_0 0 0 front 0)
+    )
+  )
+  (library
+    (image "simple_pinout:37.1600x9.2200_mm"
+      (pin RoundRect[A]Pad_1600x1600_um 1 -17780 3810)
+      (pin Round[A]Pad_1000_1600_um 2 -15240 3810)
+      (pin Round[A]Pad_1000_1600_um 3 -12700 3810)
+      (pin Round[A]Pad_1000_1600_um 4 -10160 3810)
+      (pin Round[A]Pad_1000_1600_um 5 -7620 3810)
+      (pin Round[A]Pad_1000_1600_um 6 -5080 3810)
+      (pin Round[A]Pad_1000_1600_um 7 -2540 3810)
+      (pin Round[A]Pad_1000_1600_um 8 0 3810)
+      (pin Round[A]Pad_1000_1600_um 9 2540 3810)
+      (pin Round[A]Pad_1000_1600_um 10 5080 3810)
+      (pin Round[A]Pad_1000_1600_um 11 7620 3810)
+      (pin Round[A]Pad_1000_1600_um 12 10160 3810)
+      (pin Round[A]Pad_1000_1600_um 13 12700 3810)
+      (pin Round[A]Pad_1000_1600_um 14 15240 3810)
+      (pin Round[A]Pad_1000_1600_um 15 17780 3810)
+      (pin Round[A]Pad_1000_1600_um 16 -17780 1270)
+      (pin Round[A]Pad_1000_1600_um 17 -15240 1270)
+      (pin Round[A]Pad_1000_1600_um 18 -12700 1270)
+      (pin Round[A]Pad_1000_1600_um 19 -10160 1270)
+      (pin Round[A]Pad_1000_1600_um 20 -7620 1270)
+      (pin Round[A]Pad_1000_1600_um 21 -5080 1270)
+      (pin Round[A]Pad_1000_1600_um 22 -2540 1270)
+      (pin Round[A]Pad_1000_1600_um 23 0 1270)
+      (pin Round[A]Pad_1000_1600_um 24 2540 1270)
+      (pin Round[A]Pad_1000_1600_um 25 5080 1270)
+      (pin Round[A]Pad_1000_1600_um 26 7620 1270)
+      (pin Round[A]Pad_1000_1600_um 27 10160 1270)
+      (pin Round[A]Pad_1000_1600_um 28 12700 1270)
+      (pin Round[A]Pad_1000_1600_um 29 15240 1270)
+      (pin Round[A]Pad_1000_1600_um 30 17780 1270)
+      (pin Round[A]Pad_1000_1600_um 31 -17780 -1270)
+      (pin Round[A]Pad_1000_1600_um 32 -15240 -1270)
+      (pin Round[A]Pad_1000_1600_um 33 -12700 -1270)
+      (pin Round[A]Pad_1000_1600_um 34 -10160 -1270)
+      (pin Round[A]Pad_1000_1600_um 35 -7620 -1270)
+      (pin Round[A]Pad_1000_1600_um 36 -5080 -1270)
+      (pin Round[A]Pad_1000_1600_um 37 -2540 -1270)
+      (pin Round[A]Pad_1000_1600_um 38 0 -1270)
+      (pin Round[A]Pad_1000_1600_um 39 2540 -1270)
+      (pin Round[A]Pad_1000_1600_um 40 5080 -1270)
+      (pin Round[A]Pad_1000_1600_um 41 7620 -1270)
+      (pin Round[A]Pad_1000_1600_um 42 10160 -1270)
+      (pin Round[A]Pad_1000_1600_um 43 12700 -1270)
+      (pin Round[A]Pad_1000_1600_um 44 15240 -1270)
+      (pin Round[A]Pad_1000_1600_um 45 17780 -1270)
+      (pin Round[A]Pad_1000_1600_um 46 -17780 -3810)
+      (pin Round[A]Pad_1000_1600_um 47 -15240 -3810)
+      (pin Round[A]Pad_1000_1600_um 48 -12700 -3810)
+      (pin Round[A]Pad_1000_1600_um 49 -10160 -3810)
+      (pin Round[A]Pad_1000_1600_um 50 -7620 -3810)
+      (pin Round[A]Pad_1000_1600_um 51 -5080 -3810)
+      (pin Round[A]Pad_1000_1600_um 52 -2540 -3810)
+      (pin Round[A]Pad_1000_1600_um 53 0 -3810)
+      (pin Round[A]Pad_1000_1600_um 54 2540 -3810)
+      (pin Round[A]Pad_1000_1600_um 55 5080 -3810)
+      (pin Round[A]Pad_1000_1600_um 56 7620 -3810)
+      (pin Round[A]Pad_1000_1600_um 57 10160 -3810)
+      (pin Round[A]Pad_1000_1600_um 58 12700 -3810)
+      (pin Round[A]Pad_1000_1600_um 59 15240 -3810)
+      (pin Round[A]Pad_1000_1600_um 60 17780 -3810)
+    )
+    (padstack "Via[0-1]_600:300_um"
+      (shape (circle F.Cu 600))
+      (shape (circle B.Cu 600))
+      (attach off)
+    )
+    (padstack "RoundRect[A]Pad_1600x1600_um"
+      (shape (polygon F.Cu 0 -800 800 800 800 800 -800 -800 -800 -800 800))
+      (shape (polygon B.Cu 0 -800 800 800 800 800 -800 -800 -800 -800 800))
+      (attach off)
+    )
+    (padstack "Round[A]Pad_1000_1600_um"
+      (shape (circle F.Cu 1600))
+      (shape (circle B.Cu 1600))
+      (attach off)
+    )
+  )
+  (network
+    (net "NIN0_source_net_14"
+      (pins U1_source_component_0-29 U1_source_component_0-41 U1_source_component_0-46)
+    )
+    (net "NIN1_source_net_13"
+      (pins U1_source_component_0-27 U1_source_component_0-38 U1_source_component_0-47)
+    )
+    (net "NIN10_source_net_9"
+      (pins U1_source_component_0-14 U1_source_component_0-16 U1_source_component_0-37 U1_source_component_0-56)
+    )
+    (net "NIN11_source_net_11"
+      (pins U1_source_component_0-20 U1_source_component_0-39 U1_source_component_0-57)
+    )
+    (net "NIN12_source_net_3"
+      (pins U1_source_component_0-4 U1_source_component_0-22 U1_source_component_0-26 U1_source_component_0-58)
+    )
+    (net "NIN13_source_net_4"
+      (pins U1_source_component_0-6 U1_source_component_0-9 U1_source_component_0-32 U1_source_component_0-59)
+    )
+    (net "NIN14_source_net_1"
+      (pins U1_source_component_0-2 U1_source_component_0-8 U1_source_component_0-10 U1_source_component_0-42 U1_source_component_0-60)
+    )
+    (net "NIN2_source_net_8"
+      (pins U1_source_component_0-13 U1_source_component_0-25 U1_source_component_0-48)
+    )
+    (net "NIN3_source_net_5"
+      (pins U1_source_component_0-7 U1_source_component_0-28 U1_source_component_0-36 U1_source_component_0-49)
+    )
+    (net "NIN4_source_net_0"
+      (pins U1_source_component_0-1 U1_source_component_0-5 U1_source_component_0-30 U1_source_component_0-33 U1_source_component_0-50)
+    )
+    (net "NIN5_source_net_6"
+      (pins U1_source_component_0-11 U1_source_component_0-17 U1_source_component_0-31 U1_source_component_0-35 U1_source_component_0-51)
+    )
+    (net "NIN6_source_net_7"
+      (pins U1_source_component_0-12 U1_source_component_0-19 U1_source_component_0-44 U1_source_component_0-52)
+    )
+    (net "NIN7_source_net_2"
+      (pins U1_source_component_0-3 U1_source_component_0-15 U1_source_component_0-23 U1_source_component_0-40 U1_source_component_0-53)
+    )
+    (net "NIN8_source_net_12"
+      (pins U1_source_component_0-21 U1_source_component_0-34 U1_source_component_0-45 U1_source_component_0-54)
+    )
+    (net "NIN9_source_net_10"
+      (pins U1_source_component_0-18 U1_source_component_0-24 U1_source_component_0-43 U1_source_component_0-55)
+    )
+    (class "kicad_default" "" "NIN0_source_net_14" "NIN1_source_net_13" "NIN10_source_net_9" "NIN11_source_net_11" "NIN12_source_net_3" "NIN13_source_net_4" "NIN14_source_net_1" "NIN2_source_net_8" "NIN3_source_net_5" "NIN4_source_net_0" "NIN5_source_net_6" "NIN6_source_net_7" "NIN7_source_net_2" "NIN8_source_net_12" "NIN9_source_net_10"
+      (circuit
+        (use_via "Via[0-1]_600:300_um")
+      )
+      (rule
+        (width 150)
+        (clearance 150)
+      )
+    )
+  )
+  (wiring
+  )
+)
