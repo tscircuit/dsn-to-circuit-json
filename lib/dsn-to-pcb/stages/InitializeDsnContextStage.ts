@@ -48,7 +48,7 @@ export class InitializeDsnContextStage extends ConverterStage {
 
     // Build transform: translate to center, then scale
     this.ctx.dsnToCircuitJsonTransformMatrix = compose(
-      scale(DSN_TO_MM_SCALE, -DSN_TO_MM_SCALE), // Scale and flip Y
+      scale(DSN_TO_MM_SCALE, DSN_TO_MM_SCALE), // Scale
       translate(-boardCenter.x, -boardCenter.y), // Center at origin
     )
 

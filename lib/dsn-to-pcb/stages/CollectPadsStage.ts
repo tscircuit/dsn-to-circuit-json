@@ -140,7 +140,7 @@ export class CollectPadsStage extends ConverterStage {
     const DSN_TO_MM_SCALE = 1 / 1000
     const pinOffsetMm = {
       x: pinX * DSN_TO_MM_SCALE,
-      y: -pinY * DSN_TO_MM_SCALE, // Flip Y for DSN to CJ
+      y: pinY * DSN_TO_MM_SCALE,
     }
 
     // Apply component rotation to pin offset
