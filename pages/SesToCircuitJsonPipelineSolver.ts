@@ -56,9 +56,6 @@ export interface TraceViewerOutput {
  * - Statistics about the traces
  *
  * The visualization steps through each trace to show how the routes were collected.
- *
- * Note: Circuit JSON coordinates are in mm which are very small for visualization.
- * This viewer automatically scales coordinates to make them visible.
  */
 export class TraceViewer extends BaseSolver {
   private input: TraceViewerInput
@@ -69,12 +66,7 @@ export class TraceViewer extends BaseSolver {
   // Color mode: "layer" colors by layer, "trace" colors by pcb_trace
   colorMode: ColorMode = "layer"
 
-  // Scale factor to make small mm coordinates visible
-  // Circuit JSON uses mm, typical traces are 0.1-0.5mm apart
-  // We scale up by 100x to make them ~10-50 units apart
-  private scale = 1
-
-  // Computed data (already scaled)
+  // Parsed trace segments for visualization
   private traceSegments: Array<{
     traceId: string
     layer: LayerRef
@@ -82,16 +74,16 @@ export class TraceViewer extends BaseSolver {
     width: number
   }> = []
 
-  // Scaled vias for visualization
-  private scaledVias: Array<{
+  // Vias for visualization
+  private vias: Array<{
     x: number
     y: number
     outer_diameter: number
     hole_diameter: number
   }> = []
 
-  // Scaled SMT pads for visualization
-  private scaledSmtpads: Array<{
+  // SMT pads for visualization
+  private smtpads: Array<{
     x: number
     y: number
     shape:
@@ -107,8 +99,8 @@ export class TraceViewer extends BaseSolver {
     layer: LayerRef
   }> = []
 
-  // Scaled plated holes for visualization
-  private scaledPlatedHoles: Array<{
+  // Plated holes for visualization
+  private platedHoles: Array<{
     x: number
     y: number
     outer_diameter: number
@@ -159,22 +151,22 @@ export class TraceViewer extends BaseSolver {
   }
 
   override _setup(): void {
-    // Parse traces into segments for visualization (applies scaling)
+    // Parse traces into segments for visualization
     this.parseTraceSegments()
 
-    // Scale vias for visualization
-    this.scaleVias()
+    // Parse vias for visualization
+    this.parseVias()
 
-    // Scale SMT pads for visualization
-    this.scaleSmtpads()
+    // Parse SMT pads for visualization
+    this.parseSmtpads()
 
-    // Scale plated holes for visualization
-    this.scalePlatedHoles()
+    // Parse plated holes for visualization
+    this.parsePlatedHoles()
 
     // Assign colors to each unique trace ID
     this.assignTraceColors()
 
-    // Calculate board bounds from scaled data
+    // Calculate board bounds
     this.calculateBoardBounds()
 
     this.phase = "animating"
@@ -199,23 +191,23 @@ export class TraceViewer extends BaseSolver {
   }
 
   /**
-   * Scale vias for visualization
+   * Parse vias for visualization
    */
-  private scaleVias(): void {
+  private parseVias(): void {
     for (const via of this.input.vias) {
-      this.scaledVias.push({
-        x: via.x * this.scale,
-        y: via.y * this.scale,
-        outer_diameter: via.outer_diameter * this.scale,
-        hole_diameter: via.hole_diameter * this.scale,
+      this.vias.push({
+        x: via.x,
+        y: via.y,
+        outer_diameter: via.outer_diameter,
+        hole_diameter: via.hole_diameter,
       })
     }
   }
 
   /**
-   * Scale SMT pads for visualization
+   * Parse SMT pads for visualization
    */
-  private scaleSmtpads(): void {
+  private parseSmtpads(): void {
     const smtpads = this.input.smtpads || []
     for (const pad of smtpads) {
       // Skip polygon pads for now as they don't have simple x/y coordinates
@@ -223,52 +215,50 @@ export class TraceViewer extends BaseSolver {
         continue
       }
 
-      const scaledPad: (typeof this.scaledSmtpads)[0] = {
-        x: pad.x * this.scale,
-        y: pad.y * this.scale,
+      const parsedPad: (typeof this.smtpads)[0] = {
+        x: pad.x,
+        y: pad.y,
         shape: pad.shape,
         layer: pad.layer,
       }
 
       if (pad.shape === "rect" || pad.shape === "rotated_rect") {
-        scaledPad.width = (pad.width ?? 0) * this.scale
-        scaledPad.height = (pad.height ?? 0) * this.scale
+        parsedPad.width = pad.width ?? 0
+        parsedPad.height = pad.height ?? 0
       } else if (pad.shape === "circle") {
-        scaledPad.radius = (pad.radius ?? 0) * this.scale
+        parsedPad.radius = pad.radius ?? 0
       } else if (pad.shape === "pill" || pad.shape === "rotated_pill") {
-        scaledPad.width = (pad.width ?? 0) * this.scale
-        scaledPad.height = (pad.height ?? 0) * this.scale
-        scaledPad.radius = (pad.radius ?? 0) * this.scale
+        parsedPad.width = pad.width ?? 0
+        parsedPad.height = pad.height ?? 0
+        parsedPad.radius = pad.radius ?? 0
       }
 
-      this.scaledSmtpads.push(scaledPad)
+      this.smtpads.push(parsedPad)
     }
   }
 
   /**
-   * Scale plated holes for visualization
+   * Parse plated holes for visualization
    */
-  private scalePlatedHoles(): void {
+  private parsePlatedHoles(): void {
     const platedHoles = this.input.platedHoles || []
     for (const hole of platedHoles) {
       // Handle different plated hole shapes
       if (hole.shape === "circle") {
-        this.scaledPlatedHoles.push({
-          x: hole.x * this.scale,
-          y: hole.y * this.scale,
-          outer_diameter: hole.outer_diameter * this.scale,
-          hole_diameter: hole.hole_diameter * this.scale,
+        this.platedHoles.push({
+          x: hole.x,
+          y: hole.y,
+          outer_diameter: hole.outer_diameter,
+          hole_diameter: hole.hole_diameter,
           shape: "circle",
         })
       } else if (hole.shape === "oval" || hole.shape === "pill") {
         // Oval and pill shaped holes use outer_width/height instead of diameter
-        this.scaledPlatedHoles.push({
-          x: hole.x * this.scale,
-          y: hole.y * this.scale,
-          outer_diameter:
-            Math.max(hole.outer_width, hole.outer_height) * this.scale,
-          hole_diameter:
-            Math.max(hole.hole_width, hole.hole_height) * this.scale,
+        this.platedHoles.push({
+          x: hole.x,
+          y: hole.y,
+          outer_diameter: Math.max(hole.outer_width, hole.outer_height),
+          hole_diameter: Math.max(hole.hole_width, hole.hole_height),
           shape: hole.shape,
         })
       }
@@ -278,7 +268,6 @@ export class TraceViewer extends BaseSolver {
 
   /**
    * Parse traces into segments for easier visualization
-   * Applies scaling to all coordinates
    */
   private parseTraceSegments(): void {
     for (const trace of this.input.traces) {
@@ -293,13 +282,6 @@ export class TraceViewer extends BaseSolver {
 
       for (const point of trace.route) {
         if (point.route_type === "wire") {
-          // Scale coordinates for visualization
-          const scaledPoint = {
-            x: point.x * this.scale,
-            y: point.y * this.scale,
-          }
-          const scaledWidth = point.width * this.scale
-
           if (!currentSegment || currentSegment.layer !== point.layer) {
             // Start a new segment
             if (currentSegment && currentSegment.points.length >= 2) {
@@ -308,11 +290,11 @@ export class TraceViewer extends BaseSolver {
             currentSegment = {
               traceId: trace.pcb_trace_id,
               layer: point.layer,
-              points: [scaledPoint],
-              width: scaledWidth,
+              points: [{ x: point.x, y: point.y }],
+              width: point.width,
             }
           } else {
-            currentSegment.points.push(scaledPoint)
+            currentSegment.points.push({ x: point.x, y: point.y })
           }
         } else if (point.route_type === "via") {
           // Finalize current segment before via
@@ -331,7 +313,7 @@ export class TraceViewer extends BaseSolver {
   }
 
   /**
-   * Calculate board bounds from scaled trace segments, vias, pads, and plated holes
+   * Calculate board bounds from trace segments, vias, pads, and plated holes
    */
   private calculateBoardBounds(): void {
     let minX = Infinity
@@ -339,7 +321,6 @@ export class TraceViewer extends BaseSolver {
     let maxX = -Infinity
     let maxY = -Infinity
 
-    // Use already-scaled trace segments
     for (const segment of this.traceSegments) {
       for (const point of segment.points) {
         minX = Math.min(minX, point.x)
@@ -349,16 +330,14 @@ export class TraceViewer extends BaseSolver {
       }
     }
 
-    // Use already-scaled vias
-    for (const via of this.scaledVias) {
+    for (const via of this.vias) {
       minX = Math.min(minX, via.x)
       minY = Math.min(minY, via.y)
       maxX = Math.max(maxX, via.x)
       maxY = Math.max(maxY, via.y)
     }
 
-    // Use already-scaled SMT pads
-    for (const pad of this.scaledSmtpads) {
+    for (const pad of this.smtpads) {
       const halfWidth = (pad.width ?? pad.radius ?? 0) / 2
       const halfHeight = (pad.height ?? pad.radius ?? 0) / 2
       minX = Math.min(minX, pad.x - halfWidth)
@@ -367,8 +346,7 @@ export class TraceViewer extends BaseSolver {
       maxY = Math.max(maxY, pad.y + halfHeight)
     }
 
-    // Use already-scaled plated holes
-    for (const hole of this.scaledPlatedHoles) {
+    for (const hole of this.platedHoles) {
       const halfDiameter = hole.outer_diameter / 2
       minX = Math.min(minX, hole.x - halfDiameter)
       minY = Math.min(minY, hole.y - halfDiameter)
@@ -498,8 +476,8 @@ export class TraceViewer extends BaseSolver {
       }
     }
 
-    // Draw vias (using scaled vias)
-    for (const via of this.scaledVias) {
+    // Draw vias
+    for (const via of this.vias) {
       // Outer circle (copper)
       graphics.circles!.push({
         center: { x: via.x, y: via.y },
@@ -518,7 +496,7 @@ export class TraceViewer extends BaseSolver {
     }
 
     // Draw SMT pads (always visible, underneath traces)
-    for (const pad of this.scaledSmtpads) {
+    for (const pad of this.smtpads) {
       const padColor = layerColors[pad.layer] || "#888"
       // Lighter version for pads (50% lighter)
       const lightPadColor = this.lightenColor(padColor, 0.5)
@@ -548,7 +526,7 @@ export class TraceViewer extends BaseSolver {
     }
 
     // Draw plated holes (always visible)
-    for (const hole of this.scaledPlatedHoles) {
+    for (const hole of this.platedHoles) {
       // Outer copper ring
       graphics.circles!.push({
         center: { x: hole.x, y: hole.y },
