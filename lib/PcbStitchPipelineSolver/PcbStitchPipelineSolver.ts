@@ -5,7 +5,7 @@ import {
   type PipelineStep,
 } from "@tscircuit/solver-utils"
 import type { CircuitJson, PcbTrace, PcbVia } from "circuit-json"
-import type { DsnPin, SpectraDsn } from "dsnts"
+import type { DsnPin, DsnVia, SpectraDsn, SpectraSes, Wire } from "dsnts"
 import type { GraphicsObject } from "graphics-debug"
 import { PadTraceConnectorSolver } from "./PadTraceConnectorSolver"
 import { HangingTraceSolver } from "./HangingTraceSolver"
@@ -14,11 +14,21 @@ import type {
   SesToCircuitJsonConverterStage,
 } from "../ses-to-circuit-json/types"
 
-export class PcbStitchPipelineSolver extends BasePipelineSolver<{
-  sesOutputTraces: PcbTrace[]
-  sesOutputVias: PcbVia[]
-  inputDsn: SpectraDsn
-}> {
+export interface PcbStitchInputProblem {
+  ses: SpectraSes
+  dsn: SpectraDsn
+}
+
+type AggregatedTraceId = string
+export interface PcbStitchOutput {
+  aggregatedTraces: Array<{
+    aggregatedTraceId: AggregatedTraceId
+    wires: Wire[]
+    vias: DsnVia[]
+  }>
+}
+
+export class PcbStitchPipelineSolver extends BasePipelineSolver<PcbStitchInputProblem> {
   get iteration(): number {
     return this.iterations
   }
@@ -68,5 +78,14 @@ export class PcbStitchPipelineSolver extends BasePipelineSolver<{
 
   override _step(): void {}
 
-  override visualize(): GraphicsObject {}
+  override visualize(): GraphicsObject {
+    const graphics: GraphicsObject = {
+      lines: [],
+      circles: [],
+      rects: [],
+      texts: [],
+    }
+
+    return graphics
+  }
 }

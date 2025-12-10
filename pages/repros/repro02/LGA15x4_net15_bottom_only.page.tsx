@@ -1,14 +1,12 @@
 import React, { useMemo, useState, useCallback } from "react"
 import { GenericSolverDebugger } from "@tscircuit/solver-utils/react"
-import { TraceViewer, type ColorMode } from "../SesToCircuitJsonPipelineSolver"
-import { convertSesToCircuitJson } from "../../lib/ses-to-pcb"
-import { convertDsnToCircuitJson } from "../../lib/dsn-to-pcb"
-import type {
-  PcbTrace,
-  PcbVia,
-  PcbSmtPad,
-  PcbPlatedHole,
-} from "circuit-json"
+import {
+  TraceViewer,
+  type ColorMode,
+} from "../../SesToCircuitJsonPipelineSolver"
+import { convertSesToCircuitJson } from "lib/ses-to-circuit-json"
+import { convertDsnToCircuitJson } from "lib/dsn-to-circuit-json"
+import type { PcbTrace, PcbVia, PcbSmtPad, PcbPlatedHole } from "circuit-json"
 // @ts-ignore
 import LGA51x4_net15_bottom_only_SES from "./assets/LGA15x4_net15_bottom_only.ses?raw"
 // @ts-ignore
@@ -21,7 +19,9 @@ export default function LGA51x4_net15_bottom_onlyFixture() {
   const solver = useMemo(() => {
     try {
       // Parse SES for traces and vias
-      const sesCircuitJson = convertSesToCircuitJson(LGA51x4_net15_bottom_only_SES)
+      const sesCircuitJson = convertSesToCircuitJson(
+        LGA51x4_net15_bottom_only_SES,
+      )
 
       const traces = sesCircuitJson.filter(
         (el): el is PcbTrace => el.type === "pcb_trace",
@@ -31,7 +31,9 @@ export default function LGA51x4_net15_bottom_onlyFixture() {
       )
 
       // Parse DSN for SMT pads and plated holes
-      const dsnCircuitJson = convertDsnToCircuitJson(LGA51x4_net15_bottom_only_DSN)
+      const dsnCircuitJson = convertDsnToCircuitJson(
+        LGA51x4_net15_bottom_only_DSN,
+      )
 
       const smtpads = dsnCircuitJson.filter(
         (el): el is PcbSmtPad => el.type === "pcb_smtpad",

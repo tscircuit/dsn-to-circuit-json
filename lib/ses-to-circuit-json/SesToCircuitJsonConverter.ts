@@ -64,9 +64,18 @@ export class SesToCircuitJsonConverter {
     // Set up the conversion pipeline
     this.pipeline = [
       new InitializeSesContextStage(this.ctx),
+      new PcbStitchPipelineSolver({
+        dsn: parsedDsn,
+        ses: parsedSes,
+      }) as any,
+
+      // NOW WE HAVE THE AGGREGATED TRACES, WE HAVE SCALING ETC. WE CAN NOW
+      // CONVERT TO CIRCUIT JSON
+
+      // legacy
       // new CollectSesRoutesStage(this.ctx),
-      // new GroupWiresIntoTracesStage(this.ctx),
-      new PcbStitchPipelineSolver({}) as any,
+      // // new GroupWiresIntoTracesStage(this.ctx),
+
       // new PcbTraceCombineStage(this.ctx),
     ]
   }

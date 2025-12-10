@@ -1,14 +1,12 @@
 import React, { useMemo, useState, useCallback } from "react"
 import { GenericSolverDebugger } from "@tscircuit/solver-utils/react"
-import { TraceViewer, type ColorMode } from "../SesToCircuitJsonPipelineSolver"
-import { convertSesToCircuitJson } from "../../lib/ses-to-pcb"
-import { convertDsnToCircuitJson } from "../../lib/dsn-to-pcb"
-import type {
-  PcbTrace,
-  PcbVia,
-  PcbSmtPad,
-  PcbPlatedHole,
-} from "circuit-json"
+import {
+  TraceViewer,
+  type ColorMode,
+} from "../../SesToCircuitJsonPipelineSolver"
+import { convertSesToCircuitJson } from "lib/ses-to-circuit-json"
+import { convertDsnToCircuitJson } from "lib/dsn-to-circuit-json"
+import type { PcbTrace, PcbVia, PcbSmtPad, PcbPlatedHole } from "circuit-json"
 // @ts-ignore
 import MOTOR_DRIVER_SES from "./assets/output.ses?raw"
 // @ts-ignore
