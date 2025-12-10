@@ -10,9 +10,9 @@ import type {
   PcbPlatedHole,
 } from "circuit-json"
 // @ts-ignore
-import LGA51x4_net15_bottom_only_SES from "./assets/LGA51x4_net15_bottom_only.ses?raw"
+import LGA51x4_net15_bottom_only_SES from "./assets/LGA15x4_net15_bottom_only.ses?raw"
 // @ts-ignore
-import LGA51x4_net15_bottom_only_DSN from "./assets/LGA51x4_net15_bottom_only_input.dsn?raw"
+import LGA51x4_net15_bottom_only_DSN from "./assets/LGA15x4_net15_bottom_only_input.dsn?raw"
 
 export default function LGA51x4_net15_bottom_onlyFixture() {
   const [colorMode, setColorMode] = useState<ColorMode>("layer")
