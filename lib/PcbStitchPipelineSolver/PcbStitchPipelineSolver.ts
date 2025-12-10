@@ -6,13 +6,14 @@ import {
 } from "@tscircuit/solver-utils"
 import type { CircuitJson, PcbTrace, PcbVia } from "circuit-json"
 import type { DsnPin, DsnVia, SpectraDsn, SpectraSes, Wire } from "dsnts"
-import type { GraphicsObject } from "graphics-debug"
+import { mergeGraphics, type GraphicsObject } from "graphics-debug"
 import { PadTraceConnectorSolver } from "./PadTraceConnectorSolver"
 import { HangingTraceSolver } from "./HangingTraceSolver"
 import type {
   SesConverterContext,
   SesToCircuitJsonConverterStage,
 } from "../ses-to-circuit-json/types"
+import { visualizeSpecctraDsn } from "./visualize/visualizeSpecctraDsn"
 
 export interface PcbStitchInputProblem {
   ses: SpectraSes
@@ -79,12 +80,14 @@ export class PcbStitchPipelineSolver extends BasePipelineSolver<PcbStitchInputPr
   override _step(): void {}
 
   override visualize(): GraphicsObject {
-    const graphics: GraphicsObject = {
-      lines: [],
-      circles: [],
-      rects: [],
-      texts: [],
+    if (this.activeSubSolver) {
+      return this.activeSubSolver.visualize()
     }
+
+    const graphics: GraphicsObject = mergeGraphics(
+      visualizeSpecctraDsn(this.inputProblem.dsn),
+      {},
+    )
 
     return graphics
   }

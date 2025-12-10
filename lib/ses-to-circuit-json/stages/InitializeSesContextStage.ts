@@ -1,7 +1,6 @@
 import { SesToCircuitJsonConverterStage } from "../types"
 import { scale } from "transformation-matrix"
 import type { DsnCircle } from "dsnts"
-import { ConverterStage } from "../../dsn-to-circuit-json"
 
 /**
  * InitializeSesContextStage sets up the conversion context for SES files.

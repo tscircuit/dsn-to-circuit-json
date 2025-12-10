@@ -20,5 +20,7 @@ export class PadTraceConnectorSolver extends BaseSolver {
 
   override _step(): void {}
 
-  override visualize(): GraphicsObject {}
+  override visualize(): GraphicsObject {
+    return {}
+  }
 }
