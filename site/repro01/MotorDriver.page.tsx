@@ -1,10 +1,18 @@
 import React, { useMemo, useState, useCallback } from "react"
 import { GenericSolverDebugger } from "@tscircuit/solver-utils/react"
-import { TraceViewer, type ColorMode } from "../TraceViewer"
+import { TraceViewer, type ColorMode } from "../SesToCircuitJsonPipelineSolver"
 import { convertSesToCircuitJson } from "../../lib/ses-to-pcb"
-import type { CircuitJson, PcbTrace, PcbVia } from "circuit-json"
+import { convertDsnToCircuitJson } from "../../lib/dsn-to-pcb"
+import type {
+  PcbTrace,
+  PcbVia,
+  PcbSmtPad,
+  PcbPlatedHole,
+} from "circuit-json"
 // @ts-ignore
 import MOTOR_DRIVER_SES from "./assets/output.ses?raw"
+// @ts-ignore
+import MOTOR_DRIVER_DSN from "./assets/motor_driver_input.dsn?raw"
 
 export default function TraceViewer01Fixture() {
   const [colorMode, setColorMode] = useState<ColorMode>("layer")
@@ -12,22 +20,35 @@ export default function TraceViewer01Fixture() {
 
   const solver = useMemo(() => {
     try {
-      const circuitJson = convertSesToCircuitJson(MOTOR_DRIVER_SES)
+      // Parse SES for traces and vias
+      const sesCircuitJson = convertSesToCircuitJson(MOTOR_DRIVER_SES)
 
-      const traces = circuitJson.filter(
+      const traces = sesCircuitJson.filter(
         (el): el is PcbTrace => el.type === "pcb_trace",
       )
-      const vias = circuitJson.filter(
+      const vias = sesCircuitJson.filter(
         (el): el is PcbVia => el.type === "pcb_via",
+      )
+
+      // Parse DSN for SMT pads and plated holes
+      const dsnCircuitJson = convertDsnToCircuitJson(MOTOR_DRIVER_DSN)
+
+      const smtpads = dsnCircuitJson.filter(
+        (el): el is PcbSmtPad => el.type === "pcb_smtpad",
+      )
+      const platedHoles = dsnCircuitJson.filter(
+        (el): el is PcbPlatedHole => el.type === "pcb_plated_hole",
       )
 
       return new TraceViewer({
         traces,
         vias,
+        smtpads,
+        platedHoles,
         colorMode,
       })
     } catch (e) {
-      console.error("Failed to parse SES:", e)
+      console.error("Failed to parse SES/DSN:", e)
       return new TraceViewer({ traces: [], vias: [], colorMode })
     }
   }, [colorMode])

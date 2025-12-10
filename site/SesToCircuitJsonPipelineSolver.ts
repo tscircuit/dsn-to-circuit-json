@@ -1,6 +1,12 @@
 import { BaseSolver } from "@tscircuit/solver-utils"
 import type { GraphicsObject } from "graphics-debug"
-import type { PcbTrace, PcbVia, LayerRef } from "circuit-json"
+import type {
+  PcbTrace,
+  PcbVia,
+  LayerRef,
+  PcbSmtPad,
+  PcbPlatedHole,
+} from "circuit-json"
 import { hslToHex } from "./utils/hslToHex"
 
 /**
@@ -14,6 +20,8 @@ export type ColorMode = "layer" | "trace"
 export interface TraceViewerInput {
   traces: PcbTrace[]
   vias: PcbVia[]
+  smtpads?: PcbSmtPad[]
+  platedHoles?: PcbPlatedHole[]
   boardBounds?: {
     minX: number
     minY: number
@@ -30,6 +38,8 @@ export interface TraceViewerOutput {
   stats: {
     traceCount: number
     viaCount: number
+    smtpadCount: number
+    platedHoleCount: number
     topLayerSegments: number
     bottomLayerSegments: number
     totalRoutePoints: number
@@ -78,6 +88,26 @@ export class TraceViewer extends BaseSolver {
     y: number
     outer_diameter: number
     hole_diameter: number
+  }> = []
+
+  // Scaled SMT pads for visualization
+  private scaledSmtpads: Array<{
+    x: number
+    y: number
+    shape: "rect" | "circle" | "pill" | "rotated_rect" | "polygon" | "rotated_pill"
+    width?: number
+    height?: number
+    radius?: number
+    layer: LayerRef
+  }> = []
+
+  // Scaled plated holes for visualization
+  private scaledPlatedHoles: Array<{
+    x: number
+    y: number
+    outer_diameter: number
+    hole_diameter: number
+    shape: "circle" | "oval" | "pill"
   }> = []
 
   // Map of trace IDs to their assigned colors
@@ -129,6 +159,12 @@ export class TraceViewer extends BaseSolver {
     // Scale vias for visualization
     this.scaleVias()
 
+    // Scale SMT pads for visualization
+    this.scaleSmtpads()
+
+    // Scale plated holes for visualization
+    this.scalePlatedHoles()
+
     // Assign colors to each unique trace ID
     this.assignTraceColors()
 
@@ -167,6 +203,68 @@ export class TraceViewer extends BaseSolver {
         outer_diameter: via.outer_diameter * this.scale,
         hole_diameter: via.hole_diameter * this.scale,
       })
+    }
+  }
+
+  /**
+   * Scale SMT pads for visualization
+   */
+  private scaleSmtpads(): void {
+    const smtpads = this.input.smtpads || []
+    for (const pad of smtpads) {
+      // Skip polygon pads for now as they don't have simple x/y coordinates
+      if (pad.shape === "polygon") {
+        continue
+      }
+
+      const scaledPad: (typeof this.scaledSmtpads)[0] = {
+        x: pad.x * this.scale,
+        y: pad.y * this.scale,
+        shape: pad.shape,
+        layer: pad.layer,
+      }
+
+      if (pad.shape === "rect" || pad.shape === "rotated_rect") {
+        scaledPad.width = (pad.width ?? 0) * this.scale
+        scaledPad.height = (pad.height ?? 0) * this.scale
+      } else if (pad.shape === "circle") {
+        scaledPad.radius = (pad.radius ?? 0) * this.scale
+      } else if (pad.shape === "pill" || pad.shape === "rotated_pill") {
+        scaledPad.width = (pad.width ?? 0) * this.scale
+        scaledPad.height = (pad.height ?? 0) * this.scale
+        scaledPad.radius = (pad.radius ?? 0) * this.scale
+      }
+
+      this.scaledSmtpads.push(scaledPad)
+    }
+  }
+
+  /**
+   * Scale plated holes for visualization
+   */
+  private scalePlatedHoles(): void {
+    const platedHoles = this.input.platedHoles || []
+    for (const hole of platedHoles) {
+      // Handle different plated hole shapes
+      if (hole.shape === "circle") {
+        this.scaledPlatedHoles.push({
+          x: hole.x * this.scale,
+          y: hole.y * this.scale,
+          outer_diameter: hole.outer_diameter * this.scale,
+          hole_diameter: hole.hole_diameter * this.scale,
+          shape: "circle",
+        })
+      } else if (hole.shape === "oval" || hole.shape === "pill") {
+        // Oval and pill shaped holes use outer_width/height instead of diameter
+        this.scaledPlatedHoles.push({
+          x: hole.x * this.scale,
+          y: hole.y * this.scale,
+          outer_diameter: Math.max(hole.outer_width, hole.outer_height) * this.scale,
+          hole_diameter: Math.max(hole.hole_width, hole.hole_height) * this.scale,
+          shape: hole.shape,
+        })
+      }
+      // Skip complex shapes like circular_hole_with_rect_pad, etc. for now
     }
   }
 
@@ -225,7 +323,7 @@ export class TraceViewer extends BaseSolver {
   }
 
   /**
-   * Calculate board bounds from scaled trace segments and vias
+   * Calculate board bounds from scaled trace segments, vias, pads, and plated holes
    */
   private calculateBoardBounds(): void {
     let minX = Infinity
@@ -249,6 +347,25 @@ export class TraceViewer extends BaseSolver {
       minY = Math.min(minY, via.y)
       maxX = Math.max(maxX, via.x)
       maxY = Math.max(maxY, via.y)
+    }
+
+    // Use already-scaled SMT pads
+    for (const pad of this.scaledSmtpads) {
+      const halfWidth = (pad.width ?? pad.radius ?? 0) / 2
+      const halfHeight = (pad.height ?? pad.radius ?? 0) / 2
+      minX = Math.min(minX, pad.x - halfWidth)
+      minY = Math.min(minY, pad.y - halfHeight)
+      maxX = Math.max(maxX, pad.x + halfWidth)
+      maxY = Math.max(maxY, pad.y + halfHeight)
+    }
+
+    // Use already-scaled plated holes
+    for (const hole of this.scaledPlatedHoles) {
+      const halfDiameter = hole.outer_diameter / 2
+      minX = Math.min(minX, hole.x - halfDiameter)
+      minY = Math.min(minY, hole.y - halfDiameter)
+      maxX = Math.max(maxX, hole.x + halfDiameter)
+      maxY = Math.max(maxY, hole.y + halfDiameter)
     }
 
     if (minX === Infinity) {
@@ -392,7 +509,77 @@ export class TraceViewer extends BaseSolver {
       })
     }
 
+    // Draw SMT pads (always visible, underneath traces)
+    for (const pad of this.scaledSmtpads) {
+      const padColor = layerColors[pad.layer] || "#888"
+      // Lighter version for pads (50% lighter)
+      const lightPadColor = this.lightenColor(padColor, 0.5)
+
+      if (pad.shape === "circle") {
+        graphics.circles!.push({
+          center: { x: pad.x, y: pad.y },
+          radius: pad.radius ?? 1,
+          fill: lightPadColor,
+          stroke: padColor,
+        })
+      } else if (
+        pad.shape === "rect" ||
+        pad.shape === "rotated_rect" ||
+        pad.shape === "pill" ||
+        pad.shape === "rotated_pill" ||
+        pad.shape === "polygon"
+      ) {
+        graphics.rects!.push({
+          center: { x: pad.x, y: pad.y },
+          width: pad.width ?? 1,
+          height: pad.height ?? 1,
+          fill: lightPadColor,
+          stroke: padColor,
+        })
+      }
+    }
+
+    // Draw plated holes (always visible)
+    for (const hole of this.scaledPlatedHoles) {
+      // Outer copper ring
+      graphics.circles!.push({
+        center: { x: hole.x, y: hole.y },
+        radius: hole.outer_diameter / 2,
+        fill: "#d4af37", // Gold color for plated holes
+        stroke: "#b8960c",
+      })
+
+      // Inner hole
+      graphics.circles!.push({
+        center: { x: hole.x, y: hole.y },
+        radius: hole.hole_diameter / 2,
+        fill: "#1a1a2e",
+        stroke: "#333",
+      })
+    }
+
     return graphics
+  }
+
+  /**
+   * Lighten a hex color by a factor
+   */
+  private lightenColor(hexColor: string, factor: number): string {
+    const r = parseInt(hexColor.slice(1, 3), 16)
+    const g = parseInt(hexColor.slice(3, 5), 16)
+    const b = parseInt(hexColor.slice(5, 7), 16)
+
+    const newR = Math.min(255, Math.round(r + (255 - r) * factor))
+      .toString(16)
+      .padStart(2, "0")
+    const newG = Math.min(255, Math.round(g + (255 - g) * factor))
+      .toString(16)
+      .padStart(2, "0")
+    const newB = Math.min(255, Math.round(b + (255 - b) * factor))
+      .toString(16)
+      .padStart(2, "0")
+
+    return `#${newR}${newG}${newB}`
   }
 
   /**
@@ -451,6 +638,8 @@ export class TraceViewer extends BaseSolver {
       stats: {
         traceCount: this.input.traces.length,
         viaCount: this.input.vias.length,
+        smtpadCount: this.input.smtpads?.length ?? 0,
+        platedHoleCount: this.input.platedHoles?.length ?? 0,
         topLayerSegments,
         bottomLayerSegments,
         totalRoutePoints,
