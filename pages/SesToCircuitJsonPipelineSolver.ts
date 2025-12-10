@@ -72,7 +72,7 @@ export class TraceViewer extends BaseSolver {
   // Scale factor to make small mm coordinates visible
   // Circuit JSON uses mm, typical traces are 0.1-0.5mm apart
   // We scale up by 100x to make them ~10-50 units apart
-  private scale = 100
+  private scale = 1
 
   // Computed data (already scaled)
   private traceSegments: Array<{
@@ -94,7 +94,13 @@ export class TraceViewer extends BaseSolver {
   private scaledSmtpads: Array<{
     x: number
     y: number
-    shape: "rect" | "circle" | "pill" | "rotated_rect" | "polygon" | "rotated_pill"
+    shape:
+      | "rect"
+      | "circle"
+      | "pill"
+      | "rotated_rect"
+      | "polygon"
+      | "rotated_pill"
     width?: number
     height?: number
     radius?: number
@@ -259,8 +265,10 @@ export class TraceViewer extends BaseSolver {
         this.scaledPlatedHoles.push({
           x: hole.x * this.scale,
           y: hole.y * this.scale,
-          outer_diameter: Math.max(hole.outer_width, hole.outer_height) * this.scale,
-          hole_diameter: Math.max(hole.hole_width, hole.hole_height) * this.scale,
+          outer_diameter:
+            Math.max(hole.outer_width, hole.outer_height) * this.scale,
+          hole_diameter:
+            Math.max(hole.hole_width, hole.hole_height) * this.scale,
           shape: hole.shape,
         })
       }
@@ -640,8 +648,6 @@ export class TraceViewer extends BaseSolver {
         viaCount: this.input.vias.length,
         smtpadCount: this.input.smtpads?.length ?? 0,
         platedHoleCount: this.input.platedHoles?.length ?? 0,
-        topLayerSegments,
-        bottomLayerSegments,
         totalRoutePoints,
       },
     }

@@ -37,3 +37,4 @@ debug-output
 demos
 cosmos-export
 *.xml
+.vscode
