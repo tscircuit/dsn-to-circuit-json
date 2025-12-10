@@ -1,5 +1,5 @@
 import type { PcbTrace, PcbTraceRoutePointWire } from "circuit-json"
-import { SesConverterStage } from "../types"
+import { SesToCircuitJsonConverterStage } from "../types"
 
 /**
  * Represents a trace with its start and end points for quick lookup
@@ -29,7 +29,7 @@ interface TraceWithEndpoints {
  * This stage runs before PcbTraceCombineStage to reduce the number of
  * individual trace segments that need to be combined.
  */
-export class PcbStitchTraceStage extends SesConverterStage {
+export class PcbStitchTraceStage extends SesToCircuitJsonConverterStage {
   // Tolerance for matching coordinates (in mm)
   private readonly TOLERANCE = 0.001
 

@@ -2,5 +2,8 @@ export {
   DsnToCircuitJsonConverter,
   convertDsnToCircuitJson,
 } from "./DsnToCircuitJsonConverter"
-export type { ConverterContext, ConverterStage } from "./types"
+export type {
+  ConverterContext,
+  DsnToCircuitJsonConverterStage as ConverterStage,
+} from "./types"
 export * from "./stages"

@@ -1,2 +1,2 @@
-export { SesToCircuitJsonConverter } from "./ses-to-pcb/SesToCircuitJsonConverter"
-export { DsnToCircuitJsonConverter } from "./dsn-to-pcb/DsnToCircuitJsonConverter"
+export { SesToCircuitJsonConverter } from "./ses-to-circuit-json/SesToCircuitJsonConverter"
+export { DsnToCircuitJsonConverter } from "./dsn-to-circuit-json/DsnToCircuitJsonConverter"

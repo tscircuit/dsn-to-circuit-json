@@ -1,5 +1,9 @@
 import type { LayerRef } from "circuit-json"
-import { SesConverterStage, type WireSegment, type ViaInfo } from "../types"
+import {
+  SesToCircuitJsonConverterStage,
+  type WireSegment,
+  type ViaInfo,
+} from "../types"
 import { applyToPoint } from "transformation-matrix"
 import type { SesNet, SesVia, SesWire } from "dsnts"
 
@@ -31,9 +35,9 @@ import type { SesNet, SesVia, SesWire } from "dsnts"
  *
  * Wire grouping into pcb_traces is handled by the GroupWiresIntoTracesStage.
  */
-export class CollectSesRoutesStage extends SesConverterStage {
+export class CollectSesRoutesStage extends SesToCircuitJsonConverterStage {
   step(): boolean {
-    const { parsedSes, sesToCircuitJsonTransformMatrix } = this.ctx
+    const { ses: parsedSes, sesToCircuitJsonTransformMatrix } = this.ctx
 
     if (!sesToCircuitJsonTransformMatrix) {
       throw new Error("Transform matrix not initialized")

@@ -1,4 +1,4 @@
-import { ConverterStage } from "../types"
+import { DsnToCircuitJsonConverterStage } from "../types"
 import { applyToPoint, compose, rotate, translate } from "transformation-matrix"
 
 /**
@@ -29,11 +29,12 @@ import { applyToPoint, compose, rotate, translate } from "transformation-matrix"
  * Pin positions are relative to the component origin.
  * Final pad position = component_position + rotated(pin_position)
  */
-export class CollectPadsStage extends ConverterStage {
+export class CollectPadsStage extends DsnToCircuitJsonConverterStage {
   private processedImages = new Set<string>()
 
   step(): boolean {
-    const { spectraDsn, dsnToCircuitJsonTransformMatrix } = this.ctx
+    const { specctraDsn: spectraDsn, dsnToCircuitJsonTransformMatrix } =
+      this.ctx
 
     if (!dsnToCircuitJsonTransformMatrix) {
       throw new Error("Transform matrix not initialized")

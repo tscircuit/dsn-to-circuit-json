@@ -1,7 +1,9 @@
 import type { CircuitJsonUtilObjects } from "@tscircuit/circuit-json-util"
-import type { SpectraSes } from "dsnts"
+import { DsnPadstack, SpectraDsn, type SpectraSes } from "dsnts"
 import type { Matrix } from "transformation-matrix"
 import type { CircuitJson, LayerRef } from "circuit-json"
+
+export type PadStackId = string
 
 /**
  * Represents a wire segment extracted from an SES file.
@@ -31,7 +33,12 @@ export interface SesConverterContext {
   /**
    * The parsed SES file structure from dsnts
    */
-  parsedSes: SpectraSes
+  ses: SpectraSes
+
+  /**
+   * The parsed DSN file structure from dsnts
+   */
+  dsn: SpectraDsn
 
   /**
    * Circuit JSON utility objects for building the output
@@ -59,32 +66,20 @@ export interface SesConverterContext {
    * Maps padstack ID to via diameter.
    * Vias are always circular.
    */
-  padstackIdToInfo?: Map<
-    string,
+  padstackIdToViaShape?: Map<
+    PadStackId,
     {
       shape: "circle"
       diameter?: number
     }
   >
-
-  /**
-   * Wire segments grouped by net name.
-   * Populated by CollectSesRoutesStage, consumed by GroupWiresIntoTracesStage.
-   */
-  wireSegmentsByNet?: Map<string, WireSegment[]>
-
-  /**
-   * Via information grouped by net name.
-   * Populated by CollectSesRoutesStage, consumed by GroupWiresIntoTracesStage.
-   */
-  viasByNet?: Map<string, ViaInfo[]>
 }
 
 /**
  * Abstract base class for SES converter stages.
  * Each stage performs a specific part of the SES to Circuit JSON conversion.
  */
-export abstract class SesConverterStage {
+export abstract class SesToCircuitJsonConverterStage {
   MAX_ITERATIONS = 1000
   iteration = 0
   finished = false

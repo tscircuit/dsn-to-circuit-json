@@ -3,5 +3,5 @@ export {
   convertSesToCircuitJson,
 } from "./SesToCircuitJsonConverter"
 export type { SesConverterContext } from "./types"
-export { SesConverterStage } from "./types"
+export { SesToCircuitJsonConverterStage as SesConverterStage } from "./types"
 export * from "./stages"

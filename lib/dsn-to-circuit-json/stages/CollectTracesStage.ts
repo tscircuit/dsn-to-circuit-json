@@ -1,5 +1,5 @@
 import type { LayerRef, PcbTrace, PcbTraceRoutePointVia } from "circuit-json"
-import { ConverterStage } from "../types"
+import { DsnToCircuitJsonConverterStage } from "../types"
 import { applyToPoint } from "transformation-matrix"
 
 /**
@@ -32,7 +32,7 @@ import { applyToPoint } from "transformation-matrix"
  * - (via <padstack_name> x y)
  * - Padstack name contains size info (e.g., "Via[0-1]_600:300_um")
  */
-export class CollectTracesStage extends ConverterStage {
+export class CollectTracesStage extends DsnToCircuitJsonConverterStage {
   private processedNets = new Set<string>()
   private viasByNet = new Map<
     string,
@@ -40,7 +40,8 @@ export class CollectTracesStage extends ConverterStage {
   >()
 
   step(): boolean {
-    const { spectraDsn, dsnToCircuitJsonTransformMatrix } = this.ctx
+    const { specctraDsn: spectraDsn, dsnToCircuitJsonTransformMatrix } =
+      this.ctx
 
     if (!dsnToCircuitJsonTransformMatrix) {
       throw new Error("Transform matrix not initialized")

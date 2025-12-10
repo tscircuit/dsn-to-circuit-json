@@ -1,4 +1,4 @@
-import { ConverterStage } from "../types"
+import { DsnToCircuitJsonConverterStage } from "../types"
 import { compose, scale, translate } from "transformation-matrix"
 
 /**
@@ -23,9 +23,9 @@ import { compose, scale, translate } from "transformation-matrix"
  * - DSN to Circuit JSON: scale by (1/1000) to convert μm to mm
  * - May also include translation to center the board at origin
  */
-export class InitializeDsnContextStage extends ConverterStage {
+export class InitializeDsnContextStage extends DsnToCircuitJsonConverterStage {
   step(): boolean {
-    const { spectraDsn } = this.ctx
+    const { specctraDsn: spectraDsn } = this.ctx
 
     // Extract resolution information
     const resolution = spectraDsn.resolution
@@ -73,7 +73,7 @@ export class InitializeDsnContextStage extends ConverterStage {
    * Used for centering the board at origin in Circuit JSON.
    */
   private calculateBoardCenter(): { x: number; y: number } {
-    const boundary = this.ctx.spectraDsn.structure?.boundary
+    const boundary = this.ctx.specctraDsn.structure?.boundary
 
     if (!boundary) {
       return { x: 0, y: 0 }
@@ -127,7 +127,7 @@ export class InitializeDsnContextStage extends ConverterStage {
    * This is used when creating pads to know the pad dimensions.
    */
   private buildPadstackLookup(): void {
-    const library = this.ctx.spectraDsn.library
+    const library = this.ctx.specctraDsn.library
     if (!library) return
 
     for (const padstack of library.padstacks || []) {

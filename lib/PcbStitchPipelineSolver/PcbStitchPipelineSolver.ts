@@ -9,12 +9,27 @@ import type { DsnPin, SpectraDsn } from "dsnts"
 import type { GraphicsObject } from "graphics-debug"
 import { PadTraceConnectorSolver } from "./PadTraceConnectorSolver"
 import { HangingTraceSolver } from "./HangingTraceSolver"
+import type {
+  SesConverterContext,
+  SesToCircuitJsonConverterStage,
+} from "../ses-to-circuit-json/types"
 
 export class PcbStitchPipelineSolver extends BasePipelineSolver<{
   sesOutputTraces: PcbTrace[]
   sesOutputVias: PcbVia[]
   inputDsn: SpectraDsn
 }> {
+  get iteration(): number {
+    return this.iterations
+  }
+  get finished(): boolean {
+    return Boolean(this.solved || this.error)
+  }
+  protected ctx: SesConverterContext = null as any
+  runUntilFinished(): void {
+    this.solve()
+  }
+
   padTraceConnector?: PadTraceConnectorSolver
   hangingTrace?: HangingTraceSolver
 

@@ -12,7 +12,7 @@ export interface ConverterContext {
   /**
    * The parsed DSN file (SpectraDsn object from dsnts)
    */
-  spectraDsn: SpectraDsn
+  specctraDsn: SpectraDsn
 
   /**
    * Circuit JSON utility objects for building the output
@@ -94,7 +94,7 @@ export interface ConverterContext {
  * Abstract base class for converter stages.
  * Each stage performs a specific part of the DSN to Circuit JSON conversion.
  */
-export abstract class ConverterStage {
+export abstract class DsnToCircuitJsonConverterStage {
   MAX_ITERATIONS = 1000
   iteration = 0
   finished = false

@@ -1,6 +1,7 @@
-import { SesConverterStage } from "../types"
+import { SesToCircuitJsonConverterStage } from "../types"
 import { scale } from "transformation-matrix"
 import type { DsnCircle } from "dsnts"
+import { ConverterStage } from "../../dsn-to-circuit-json"
 
 /**
  * InitializeSesContextStage sets up the conversion context for SES files.
@@ -24,9 +25,9 @@ import type { DsnCircle } from "dsnts"
  * - SES to Circuit JSON: scale based on resolution unit
  * - Mils to mm: 1 mil = 0.0254 mm
  */
-export class InitializeSesContextStage extends SesConverterStage {
+export class InitializeSesContextStage extends SesToCircuitJsonConverterStage {
   step(): boolean {
-    const { parsedSes } = this.ctx
+    const { ses: parsedSes } = this.ctx
 
     // Extract resolution information from routes section
     const routes = parsedSes.routes
@@ -76,7 +77,7 @@ export class InitializeSesContextStage extends SesConverterStage {
     this.ctx.sesToCircuitJsonTransformMatrix = scale(scaleFactor, scaleFactor)
 
     // Initialize mappings
-    this.ctx.padstackIdToInfo = new Map()
+    this.ctx.padstackIdToViaShape = new Map()
 
     // Build padstack lookup table from library_out
     this.buildPadstackLookup()
@@ -89,8 +90,8 @@ export class InitializeSesContextStage extends SesConverterStage {
    * Build a lookup table from padstack IDs to their via diameter.
    */
   private buildPadstackLookup(): void {
-    const { parsedSes } = this.ctx
-    const libraryOut = parsedSes.routes?.libraryOut
+    const { ses: spectraDsn } = this.ctx
+    const libraryOut = spectraDsn.routes?.libraryOut
 
     if (!libraryOut) return
 
@@ -106,7 +107,7 @@ export class InitializeSesContextStage extends SesConverterStage {
       for (const child of shapeChildren) {
         if (child.token === "circle" || child.token === "circ") {
           const circleChild = child as DsnCircle
-          this.ctx.padstackIdToInfo!.set(padstack.padstackId, {
+          this.ctx.padstackIdToViaShape!.set(padstack.padstackId, {
             shape: "circle",
             diameter: circleChild.diameter,
           })

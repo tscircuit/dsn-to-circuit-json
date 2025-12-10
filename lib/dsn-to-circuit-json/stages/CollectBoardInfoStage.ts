@@ -1,4 +1,4 @@
-import { ConverterStage } from "../types"
+import { DsnToCircuitJsonConverterStage } from "../types"
 import { applyToPoint } from "transformation-matrix"
 import type { PcbBoard } from "circuit-json"
 
@@ -29,9 +29,10 @@ import type { PcbBoard } from "circuit-json"
  *   num_layers: number
  * }
  */
-export class CollectBoardInfoStage extends ConverterStage {
+export class CollectBoardInfoStage extends DsnToCircuitJsonConverterStage {
   step(): boolean {
-    const { spectraDsn, dsnToCircuitJsonTransformMatrix } = this.ctx
+    const { specctraDsn: spectraDsn, dsnToCircuitJsonTransformMatrix } =
+      this.ctx
 
     if (!dsnToCircuitJsonTransformMatrix) {
       throw new Error("Transform matrix not initialized")

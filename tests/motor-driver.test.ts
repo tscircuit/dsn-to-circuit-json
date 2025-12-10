@@ -1,7 +1,7 @@
 import { resolve } from "node:path"
 import { readFile } from "node:fs/promises"
 import { expect, test } from "bun:test"
-import { convertSesToCircuitJson } from "../lib/ses-to-pcb/SesToCircuitJsonConverter"
+import { convertSesToCircuitJson } from "../lib/ses-to-circuit-json/SesToCircuitJsonConverter"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("convert motor driver ses to circuit json", async () => {

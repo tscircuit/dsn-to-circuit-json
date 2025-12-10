@@ -1,4 +1,4 @@
-import { ConverterStage } from "../types"
+import { DsnToCircuitJsonConverterStage } from "../types"
 import { applyToPoint } from "transformation-matrix"
 
 /**
@@ -28,11 +28,12 @@ import { applyToPoint } from "transformation-matrix"
  * - DSN rotation is in degrees (0-360)
  * - Circuit JSON rotation is also in degrees
  */
-export class CollectComponentsStage extends ConverterStage {
+export class CollectComponentsStage extends DsnToCircuitJsonConverterStage {
   private processedComponents = new Set<string>()
 
   step(): boolean {
-    const { spectraDsn, dsnToCircuitJsonTransformMatrix } = this.ctx
+    const { specctraDsn: spectraDsn, dsnToCircuitJsonTransformMatrix } =
+      this.ctx
 
     if (!dsnToCircuitJsonTransformMatrix) {
       throw new Error("Transform matrix not initialized")

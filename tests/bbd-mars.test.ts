@@ -1,7 +1,7 @@
 import { resolve } from "node:path"
 import { readFile } from "node:fs/promises"
 import { expect, test } from "bun:test"
-import { convertDsnToCircuitJson } from "../lib/dsn-to-pcb/DsnToCircuitJsonConverter"
+import { convertDsnToCircuitJson } from "../lib/dsn-to-circuit-json/DsnToCircuitJsonConverter"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("can convert BBD_Mars-64.dsn to circuit json", async () => {

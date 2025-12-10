@@ -1,7 +1,7 @@
 import { parseSpectraDsn, type SpectraDsn } from "dsnts"
 import { cju } from "@tscircuit/circuit-json-util"
 import type { CircuitJson } from "circuit-json"
-import type { ConverterContext, ConverterStage } from "./types"
+import type { ConverterContext, DsnToCircuitJsonConverterStage } from "./types"
 import { InitializeDsnContextStage } from "./stages/InitializeDsnContextStage"
 import { CollectBoardInfoStage } from "./stages/CollectBoardInfoStage"
 import { CollectComponentsStage } from "./stages/CollectComponentsStage"
@@ -29,11 +29,11 @@ import { CollectTracesStage } from "./stages/CollectTracesStage"
  */
 export class DsnToCircuitJsonConverter {
   ctx: ConverterContext
-  pipeline: ConverterStage[]
+  pipeline: DsnToCircuitJsonConverterStage[]
   currentStageIndex = 0
   finished = false
 
-  get currentStage(): ConverterStage | undefined {
+  get currentStage(): DsnToCircuitJsonConverterStage | undefined {
     return this.pipeline[this.currentStageIndex]
   }
 
@@ -47,7 +47,7 @@ export class DsnToCircuitJsonConverter {
 
     // Initialize the context with parsed DSN and empty circuit JSON database
     this.ctx = {
-      spectraDsn,
+      specctraDsn: spectraDsn,
       db: cju([]), // Start with empty circuit JSON
     }
 

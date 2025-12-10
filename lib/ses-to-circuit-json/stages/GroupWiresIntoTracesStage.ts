@@ -1,5 +1,9 @@
 import type { LayerRef, PcbTrace } from "circuit-json"
-import { SesConverterStage, type WireSegment, type ViaInfo } from "../types"
+import {
+  SesToCircuitJsonConverterStage,
+  type WireSegment,
+  type ViaInfo,
+} from "../types"
 
 interface SegmentData {
   points: Array<{ x: number; y: number }>
@@ -23,7 +27,7 @@ interface SegmentData {
  * - Segments on different layers can be connected if there's a via at the junction point
  * - Each connected group of segments becomes a single pcb_trace
  */
-export class GroupWiresIntoTracesStage extends SesConverterStage {
+export class GroupWiresIntoTracesStage extends SesToCircuitJsonConverterStage {
   // Tolerance for matching points (in mm)
   private readonly TOLERANCE = 0.001
 

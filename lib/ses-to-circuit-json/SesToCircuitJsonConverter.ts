@@ -1,10 +1,14 @@
 import { cju } from "@tscircuit/circuit-json-util"
 import type { CircuitJson } from "circuit-json"
-import type { SesConverterContext, SesConverterStage } from "./types"
-import { parseSpectraSes } from "dsnts"
+import type {
+  SesConverterContext,
+  SesToCircuitJsonConverterStage,
+} from "./types"
+import { parseSpectraDsn, parseSpectraSes } from "dsnts"
 import { InitializeSesContextStage } from "./stages/InitializeSesContextStage"
 import { CollectSesRoutesStage } from "./stages/CollectSesRoutesStage"
 import { GroupWiresIntoTracesStage } from "./stages/GroupWiresIntoTracesStage"
+import { PcbStitchPipelineSolver } from "../PcbStitchPipelineSolver/PcbStitchPipelineSolver"
 
 /**
  * Converts a Specctra SES (Session) file to Circuit JSON format.
@@ -32,11 +36,11 @@ import { GroupWiresIntoTracesStage } from "./stages/GroupWiresIntoTracesStage"
  */
 export class SesToCircuitJsonConverter {
   ctx: SesConverterContext
-  pipeline: SesConverterStage[]
+  pipeline: SesToCircuitJsonConverterStage[]
   currentStageIndex = 0
   finished = false
 
-  get currentStage(): SesConverterStage | undefined {
+  get currentStage(): SesToCircuitJsonConverterStage | undefined {
     return this.pipeline[this.currentStageIndex]
   }
 
@@ -45,22 +49,24 @@ export class SesToCircuitJsonConverter {
    * @param sesString - The raw SES file content as a string
    * @param options - Optional configuration including original circuit JSON
    */
-  constructor(sesString: string) {
+  constructor(sesString: string, dsnString: string) {
     // Parse the SES file using dsnts parseSpectraSes
     const parsedSes = parseSpectraSes(sesString)
+    const parsedDsn = parseSpectraDsn(dsnString)
 
     // Initialize the context with parsed SES and empty circuit JSON database
     this.ctx = {
-      parsedSes,
+      ses: parsedSes,
+      dsn: parsedDsn,
       db: cju([]), // Start with empty circuit JSON
     }
 
     // Set up the conversion pipeline
     this.pipeline = [
       new InitializeSesContextStage(this.ctx),
-      new CollectSesRoutesStage(this.ctx),
-      new GroupWiresIntoTracesStage(this.ctx),
-      // new PcbStitchTraceStage(this.ctx),
+      // new CollectSesRoutesStage(this.ctx),
+      // new GroupWiresIntoTracesStage(this.ctx),
+      new PcbStitchPipelineSolver({}) as any,
       // new PcbTraceCombineStage(this.ctx),
     ]
   }

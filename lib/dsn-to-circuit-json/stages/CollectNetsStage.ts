@@ -1,4 +1,4 @@
-import { ConverterStage } from "../types"
+import { DsnToCircuitJsonConverterStage } from "../types"
 
 /**
  * CollectNetsStage creates source_net and source_trace elements from DSN network section.
@@ -22,11 +22,11 @@ import { ConverterStage } from "../types"
  * - Net names can be quoted strings or identifiers
  * - Pin references format: "component_ref-pin_id" (e.g., "R1-1", "U1-VCC")
  */
-export class CollectNetsStage extends ConverterStage {
+export class CollectNetsStage extends DsnToCircuitJsonConverterStage {
   private processedNets = new Set<string>()
 
   step(): boolean {
-    const { spectraDsn } = this.ctx
+    const { specctraDsn: spectraDsn } = this.ctx
 
     const network = spectraDsn.network
     if (!network) {
