@@ -17,6 +17,7 @@ import type {
 } from "dsnts"
 import { mergeGraphics, type GraphicsObject } from "graphics-debug"
 import { visualizeSpecificDsnPad } from "./visualize/visualizeSpecificDsnPad"
+import { visualizeSesWires } from "./visualize/visualizeSesWires"
 
 export interface SpecificDsnPad {
   pin: DsnPin
@@ -25,23 +26,23 @@ export interface SpecificDsnPad {
   placementComponent: DsnComponent
 }
 
-export interface SpecificDsnWire {
-  specificDsnWireId: string
+export interface SpecificSesWire {
+  specificSesWireId: string
   net: SesNet
   wire: SesWire
-  parentWire?: SpecificDsnWire
+  parentWire?: SpecificSesWire
 }
 
 export class PadTraceConnectorSolver extends BaseSolver {
   queuedPads: Array<SpecificDsnPad> = []
 
-  unusedWires: Array<SpecificDsnWire> = []
+  unusedWires: Array<SpecificSesWire> = []
 
-  usedWires: Array<SpecificDsnWire> = []
+  usedWires: Array<SpecificSesWire> = []
 
   currentPad?: SpecificDsnPad
-  exploredWires?: SpecificDsnWire[]
-  currentLeafWires?: Array<SpecificDsnWire>
+  exploredWires?: SpecificSesWire[]
+  currentLeafWires?: Array<SpecificSesWire>
 
   constructor(
     private input: {
@@ -82,7 +83,7 @@ export class PadTraceConnectorSolver extends BaseSolver {
     for (const net of this.input.ses.routes!.networkOut!.nets) {
       for (const wire of net.wires) {
         this.unusedWires.push({
-          specificDsnWireId: `wire${wireCount++}`,
+          specificSesWireId: `wire${wireCount++}`,
           net,
           wire,
 
@@ -94,7 +95,7 @@ export class PadTraceConnectorSolver extends BaseSolver {
   }
 
   override _step(): void {
-    if (this.queuedPads.length <= 0) {
+    if (this.queuedPads.length <= 0 && !this.currentPad) {
       this.solved = true
       return
     }
@@ -107,32 +108,49 @@ export class PadTraceConnectorSolver extends BaseSolver {
     }
 
     if (this.currentLeafWires!.length <= 0) {
-      this.solved = true
+      this.currentPad = undefined
       return
     }
 
-    // We're explored a currentPad, there are two ways that we stop exploring
+    // We're exploring a currentPad, there are two ways that we stop exploring
     // and say the pad is done:
     // 1. We reached the end of all the wires, there's no more leaves to explore
     // 2. We hit another pad! Yay we figured out this trace
 
     // Check if any leaf is connected to another pad
     for (const leaf of this.currentLeafWires!) {
-      // Check if leaf is connected to another pad
+      // TODO: Check if leaf is connected to another pad
     }
 
-    const nextLeaves: SpecificDsnWire[] = []
+    const nextLeaves: SpecificSesWire[] = []
     for (const leaf of this.currentLeafWires!) {
       // Find any other wires this leaf is connected to
       const otherWires = this.getUnusedWiresConnectedToWire(leaf)
+      nextLeaves.push(...otherWires)
       // NOTE: otherWires[*] has .parentWire set to leaf
     }
 
     this.currentLeafWires = nextLeaves
   }
 
-  getWiresConnectedToPad(pad: SpecificDsnPad): Array<SpecificDsnWire> {
-    // TODO
+  getWiresConnectedToPad(pad: SpecificDsnPad): Array<SpecificSesWire> {
+    // TODO: Implement wire-to-pad connection logic
+    return []
+  }
+
+  getUnusedWiresConnectedToWire(wire: SpecificSesWire): Array<SpecificSesWire> {
+    // TODO: Implement wire-to-wire connection logic
+    return []
+  }
+
+  override getOutput() {
+    // TODO: Return actual traced results
+    return {
+      padAttachedTraces: [] as any[],
+      padAttachedVias: [] as any[],
+      hangingTraces: [] as any[],
+      hangingVias: [] as any[],
+    }
   }
 
   override visualize(): GraphicsObject {

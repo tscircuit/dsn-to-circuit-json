@@ -1,18 +1,13 @@
 import {
   BasePipelineSolver,
-  BaseSolver,
   definePipelineStep,
   type PipelineStep,
 } from "@tscircuit/solver-utils"
-import type { CircuitJson, PcbTrace, PcbVia } from "circuit-json"
-import type { DsnPin, DsnVia, SpectraDsn, SpectraSes, Wire } from "dsnts"
+import type { DsnVia, SpectraDsn, SpectraSes, Wire } from "dsnts"
 import { mergeGraphics, type GraphicsObject } from "graphics-debug"
 import { PadTraceConnectorSolver } from "./PadTraceConnectorSolver"
 import { HangingTraceSolver } from "./HangingTraceSolver"
-import type {
-  SesConverterContext,
-  SesToCircuitJsonConverterStage,
-} from "../ses-to-circuit-json/types"
+import type { SesConverterContext } from "../ses-to-circuit-json/types"
 import { visualizeSpecctraDsn } from "./visualize/visualizeSpecctraDsn"
 
 export interface PcbStitchInputProblem {
@@ -47,9 +42,8 @@ export class PcbStitchPipelineSolver extends BasePipelineSolver<PcbStitchInputPr
   override pipelineDef: PipelineStep<any>[] = [
     definePipelineStep("padTraceConnector", PadTraceConnectorSolver, (psp) => [
       {
-        sesOutputTraces: psp.inputProblem.sesOutputTraces,
-        sesOutputVias: psp.inputProblem.sesOutputVias,
-        inputDsn: psp.inputProblem.inputDsn,
+        dsn: psp.inputProblem.dsn,
+        ses: psp.inputProblem.ses,
       },
     ]),
     definePipelineStep(
@@ -74,10 +68,6 @@ export class PcbStitchPipelineSolver extends BasePipelineSolver<PcbStitchInputPr
       },
     ),
   ]
-
-  override _setup(): void {}
-
-  override _step(): void {}
 
   override visualize(): GraphicsObject {
     if (this.activeSubSolver) {

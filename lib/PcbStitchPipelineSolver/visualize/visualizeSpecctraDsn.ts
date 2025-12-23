@@ -1,15 +1,10 @@
 import type { GraphicsObject } from "graphics-debug"
 import type { DsnPin, DsnPlace, SpectraDsn } from "dsnts"
-
-export const PAD_LAYER_COLORS = {
-  top: "#e74c3c", // Red for top layer
-  bottom: "#3498db", // Blue for bottom layer
-  drill: "#ff69b4", // Hot pink for drill layer
-}
-
-const BOUNDARY_COLOR = "#888888"
-const PAD_FILL_OPACITY = 0.3
-
+import {
+  BOUNDARY_COLOR,
+  PAD_LAYER_COLORS,
+  PAD_FILL_OPACITY,
+} from "./utils/colors"
 /**
  * Convert DSN coordinates to world coordinates, applying component placement transform
  */
