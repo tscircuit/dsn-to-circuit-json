@@ -1,3 +1,4 @@
+import Flatten from "@flatten-js/core"
 import { BaseSolver } from "@tscircuit/solver-utils"
 import type { PcbTrace, PcbVia } from "circuit-json"
 import type {
@@ -20,8 +21,10 @@ import { applyToPoint, type Matrix } from "transformation-matrix"
 import { visualizeSesWires } from "./visualize/visualizeSesWires"
 import { calculatePadBounds } from "./utils/calculatePadBounds"
 import {
-  doesWirePathIntersectBounds,
+  doesWirePathIntersectBox,
   extractPointsFromCoordinates,
+  Point,
+  Box,
 } from "./utils/geometryUtils"
 
 export interface SpecificDsnPad {
@@ -160,24 +163,20 @@ export class PadTraceConnectorSolver extends BaseSolver {
     // Transform pad bounds from DSN coordinates to real (mm) coordinates
     const dsnToReal = this.input.dsnToRealTransform
     const minPoint = applyToPoint(dsnToReal, {
-      x: dsnPadBounds.minX,
-      y: dsnPadBounds.minY,
+      x: dsnPadBounds.xmin,
+      y: dsnPadBounds.ymin,
     })
     const maxPoint = applyToPoint(dsnToReal, {
-      x: dsnPadBounds.maxX,
-      y: dsnPadBounds.maxY,
+      x: dsnPadBounds.xmax,
+      y: dsnPadBounds.ymax,
     })
 
-    const realPadBounds = {
-      minX: Math.min(minPoint.x, maxPoint.x),
-      maxX: Math.max(minPoint.x, maxPoint.x),
-      minY: Math.min(minPoint.y, maxPoint.y),
-      maxY: Math.max(minPoint.y, maxPoint.y),
-      centerX: (minPoint.x + maxPoint.x) / 2,
-      centerY: (minPoint.y + maxPoint.y) / 2,
-      halfWidth: Math.abs(maxPoint.x - minPoint.x) / 2,
-      halfHeight: Math.abs(maxPoint.y - minPoint.y) / 2,
-    }
+    const realPadBounds = new Box(
+      Math.min(minPoint.x, maxPoint.x),
+      Math.min(minPoint.y, maxPoint.y),
+      Math.max(minPoint.x, maxPoint.x),
+      Math.max(minPoint.y, maxPoint.y),
+    )
 
     const connectedWires: SpecificSesWire[] = []
     const stillUnusedWires: SpecificSesWire[] = []
@@ -198,11 +197,12 @@ export class PadTraceConnectorSolver extends BaseSolver {
 
       // Extract wire points and transform to real (mm) coordinates
       const sesWirePoints = extractPointsFromCoordinates(coordinates)
-      const realWirePoints = sesWirePoints.map((p) =>
-        applyToPoint(sesToReal, p),
-      )
+      const realWirePoints = sesWirePoints.map((p) => {
+        const transformed = applyToPoint(sesToReal, { x: p.x, y: p.y })
+        return new Point(transformed.x, transformed.y)
+      })
 
-      if (doesWirePathIntersectBounds(realWirePoints, realPadBounds)) {
+      if (doesWirePathIntersectBox(realWirePoints, realPadBounds)) {
         connectedWires.push(specificWire)
         this.usedWires.push(specificWire)
       } else {
@@ -237,20 +237,67 @@ export class PadTraceConnectorSolver extends BaseSolver {
       texts: [],
     }
 
-    //TODO: the traces should come from the solver
-    const allWiresFromInput: SesWire[] = []
-    const nets = this.input.ses.routes?.networkOut?.nets ?? []
-    for (const net of nets) {
-      for (const wire of net.wires ?? []) {
-        allWiresFromInput.push(wire)
-      }
+    // Visualize all pad bounds for debugging
+    const dsnToReal = this.input.dsnToRealTransform
+    const allPads = [
+      ...this.queuedPads,
+      ...(this.currentPad ? [this.currentPad] : []),
+    ]
+
+    for (const pad of allPads) {
+      const dsnPadBounds = calculatePadBounds(pad)
+      const minPoint = applyToPoint(dsnToReal, {
+        x: dsnPadBounds.xmin,
+        y: dsnPadBounds.ymin,
+      })
+      const maxPoint = applyToPoint(dsnToReal, {
+        x: dsnPadBounds.xmax,
+        y: dsnPadBounds.ymax,
+      })
+
+      graphics.rects!.push({
+        center: {
+          x: (minPoint.x + maxPoint.x) / 2,
+          y: (minPoint.y + maxPoint.y) / 2,
+        },
+        width: Math.abs(maxPoint.x - minPoint.x),
+        height: Math.abs(maxPoint.y - minPoint.y),
+        stroke: "blue",
+        label: `pad-${pad.pin.pinId}`,
+      })
     }
 
-    const sesWireGraphics = visualizeSesWires(allWiresFromInput, {
-      sesToRealTransform: this.input.sesToRealTransform,
-    })
+    // Visualize unused wires in red
+    const unusedWireGraphics = visualizeSesWires(
+      this.unusedWires.map((w) => w.wire),
+      {
+        sesToRealTransform: this.input.sesToRealTransform,
+      },
+    )
+    // Override colors to red for unused
+    for (const line of unusedWireGraphics.lines ?? []) {
+      line.strokeColor = "red"
+    }
+    for (const circle of unusedWireGraphics.circles ?? []) {
+      circle.fill = "red"
+    }
+    graphics = mergeGraphics(graphics, unusedWireGraphics)
 
-    graphics = mergeGraphics(graphics, sesWireGraphics)
+    // Visualize used wires in green
+    const usedWireGraphics = visualizeSesWires(
+      this.usedWires.map((w) => w.wire),
+      {
+        sesToRealTransform: this.input.sesToRealTransform,
+      },
+    )
+    // Override colors to green for used
+    for (const line of usedWireGraphics.lines ?? []) {
+      line.strokeColor = "green"
+    }
+    for (const circle of usedWireGraphics.circles ?? []) {
+      circle.fill = "green"
+    }
+    graphics = mergeGraphics(graphics, usedWireGraphics)
 
     return graphics
   }
