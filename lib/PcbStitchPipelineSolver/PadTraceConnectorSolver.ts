@@ -16,8 +16,13 @@ import type {
   SpectraSes,
 } from "dsnts"
 import { mergeGraphics, type GraphicsObject } from "graphics-debug"
-import { visualizeSpecificDsnPad } from "./visualize/visualizeSpecificDsnPad"
+import { applyToPoint, type Matrix } from "transformation-matrix"
 import { visualizeSesWires } from "./visualize/visualizeSesWires"
+import { calculatePadBounds } from "./utils/calculatePadBounds"
+import {
+  doesWirePathIntersectBounds,
+  extractPointsFromCoordinates,
+} from "./utils/geometryUtils"
 
 export interface SpecificDsnPad {
   pin: DsnPin
@@ -48,6 +53,8 @@ export class PadTraceConnectorSolver extends BaseSolver {
     private input: {
       dsn: SpectraDsn
       ses: SpectraSes
+      dsnToRealTransform: Matrix
+      sesToRealTransform: Matrix
     },
   ) {
     super()
@@ -133,9 +140,78 @@ export class PadTraceConnectorSolver extends BaseSolver {
     this.currentLeafWires = nextLeaves
   }
 
+  /**
+   * Finds all unused wires that have a path intersecting with the pad's bounds.
+   *
+   * The method:
+   * 1. Calculates the pad's bounding box in DSN coordinates
+   * 2. Transforms pad bounds to real (mm) coordinates
+   * 3. Iterates through all unused wires
+   * 4. Extracts and transforms wire points to real (mm) coordinates
+   * 5. Checks if the wire path intersects with the pad bounds
+   * 6. Returns matching wires (and marks them as used)
+   *
+   * Note: DSN and SES use different coordinate scales, so we convert both
+   * to real (mm) coordinates before comparison.
+   */
   getWiresConnectedToPad(pad: SpecificDsnPad): Array<SpecificSesWire> {
-    // TODO: Implement wire-to-pad connection logic
-    return []
+    const dsnPadBounds = calculatePadBounds(pad)
+
+    // Transform pad bounds from DSN coordinates to real (mm) coordinates
+    const dsnToReal = this.input.dsnToRealTransform
+    const minPoint = applyToPoint(dsnToReal, {
+      x: dsnPadBounds.minX,
+      y: dsnPadBounds.minY,
+    })
+    const maxPoint = applyToPoint(dsnToReal, {
+      x: dsnPadBounds.maxX,
+      y: dsnPadBounds.maxY,
+    })
+
+    const realPadBounds = {
+      minX: Math.min(minPoint.x, maxPoint.x),
+      maxX: Math.max(minPoint.x, maxPoint.x),
+      minY: Math.min(minPoint.y, maxPoint.y),
+      maxY: Math.max(minPoint.y, maxPoint.y),
+      centerX: (minPoint.x + maxPoint.x) / 2,
+      centerY: (minPoint.y + maxPoint.y) / 2,
+      halfWidth: Math.abs(maxPoint.x - minPoint.x) / 2,
+      halfHeight: Math.abs(maxPoint.y - minPoint.y) / 2,
+    }
+
+    const connectedWires: SpecificSesWire[] = []
+    const stillUnusedWires: SpecificSesWire[] = []
+    const sesToReal = this.input.sesToRealTransform
+
+    for (const specificWire of this.unusedWires) {
+      const wirePath = specificWire.wire.path
+      if (!wirePath) {
+        stillUnusedWires.push(specificWire)
+        continue
+      }
+
+      const coordinates = wirePath.coordinates ?? []
+      if (coordinates.length < 2) {
+        stillUnusedWires.push(specificWire)
+        continue
+      }
+
+      // Extract wire points and transform to real (mm) coordinates
+      const sesWirePoints = extractPointsFromCoordinates(coordinates)
+      const realWirePoints = sesWirePoints.map((p) =>
+        applyToPoint(sesToReal, p),
+      )
+
+      if (doesWirePathIntersectBounds(realWirePoints, realPadBounds)) {
+        connectedWires.push(specificWire)
+        this.usedWires.push(specificWire)
+      } else {
+        stillUnusedWires.push(specificWire)
+      }
+    }
+
+    this.unusedWires = stillUnusedWires
+    return connectedWires
   }
 
   getUnusedWiresConnectedToWire(wire: SpecificSesWire): Array<SpecificSesWire> {
@@ -161,12 +237,20 @@ export class PadTraceConnectorSolver extends BaseSolver {
       texts: [],
     }
 
-    if (this.currentPad) {
-      graphics = mergeGraphics(
-        graphics,
-        visualizeSpecificDsnPad(this.currentPad),
-      )
+    //TODO: the traces should come from the solver
+    const allWiresFromInput: SesWire[] = []
+    const nets = this.input.ses.routes?.networkOut?.nets ?? []
+    for (const net of nets) {
+      for (const wire of net.wires ?? []) {
+        allWiresFromInput.push(wire)
+      }
     }
+
+    const sesWireGraphics = visualizeSesWires(allWiresFromInput, {
+      sesToRealTransform: this.input.sesToRealTransform,
+    })
+
+    graphics = mergeGraphics(graphics, sesWireGraphics)
 
     return graphics
   }

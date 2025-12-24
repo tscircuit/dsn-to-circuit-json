@@ -1,7 +1,7 @@
 import type { PcbTrace, PcbVia } from "circuit-json"
 import type { GraphicsObject } from "graphics-debug"
 
-import { PAD_LAYER_COLORS } from "./visualizeSpecctraDsn"
+import { PAD_LAYER_COLORS } from "./utils/colors"
 
 export const visualizeTraces = (vias: PcbVia[], opts?: {}): GraphicsObject => {
   const graphics: GraphicsObject = {
