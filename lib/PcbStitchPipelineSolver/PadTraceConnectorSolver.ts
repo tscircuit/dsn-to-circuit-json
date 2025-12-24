@@ -1,4 +1,5 @@
 import Flatten from "@flatten-js/core"
+import type * as FlattenTypes from "@flatten-js/core"
 import { BaseSolver } from "@tscircuit/solver-utils"
 import type { PcbTrace, PcbVia } from "circuit-json"
 import type {
@@ -19,12 +20,14 @@ import type {
 import { mergeGraphics, type GraphicsObject } from "graphics-debug"
 import { applyToPoint, type Matrix } from "transformation-matrix"
 import { visualizeSesWires } from "./visualize/visualizeSesWires"
-import { calculatePadBounds } from "./utils/calculatePadBounds"
+import { getPadShape, type PadShape } from "./utils/getPadShape"
 import {
-  doesWirePathIntersectBox,
+  doesWirePathIntersectShape,
   extractPointsFromCoordinates,
   Point,
   Box,
+  Circle,
+  Polygon,
 } from "./utils/geometryUtils"
 
 export interface SpecificDsnPad {
@@ -144,39 +147,25 @@ export class PadTraceConnectorSolver extends BaseSolver {
   }
 
   /**
-   * Finds all unused wires that have a path intersecting with the pad's bounds.
+   * Finds all unused wires that have a path intersecting with the pad's actual shape.
    *
    * The method:
-   * 1. Calculates the pad's bounding box in DSN coordinates
-   * 2. Transforms pad bounds to real (mm) coordinates
+   * 1. Gets the pad's actual shape (circle, polygon, or box) in DSN coordinates
+   * 2. Transforms the shape to real (mm) coordinates
    * 3. Iterates through all unused wires
    * 4. Extracts and transforms wire points to real (mm) coordinates
-   * 5. Checks if the wire path intersects with the pad bounds
+   * 5. Checks if the wire path intersects with the actual pad shape
    * 6. Returns matching wires (and marks them as used)
    *
    * Note: DSN and SES use different coordinate scales, so we convert both
    * to real (mm) coordinates before comparison.
    */
   getWiresConnectedToPad(pad: SpecificDsnPad): Array<SpecificSesWire> {
-    const dsnPadBounds = calculatePadBounds(pad)
-
-    // Transform pad bounds from DSN coordinates to real (mm) coordinates
+    const dsnPadShape = getPadShape(pad)
     const dsnToReal = this.input.dsnToRealTransform
-    const minPoint = applyToPoint(dsnToReal, {
-      x: dsnPadBounds.xmin,
-      y: dsnPadBounds.ymin,
-    })
-    const maxPoint = applyToPoint(dsnToReal, {
-      x: dsnPadBounds.xmax,
-      y: dsnPadBounds.ymax,
-    })
 
-    const realPadBounds = new Box(
-      Math.min(minPoint.x, maxPoint.x),
-      Math.min(minPoint.y, maxPoint.y),
-      Math.max(minPoint.x, maxPoint.x),
-      Math.max(minPoint.y, maxPoint.y),
-    )
+    // Transform pad shape from DSN coordinates to real (mm) coordinates
+    const realPadShape = this.transformPadShape(dsnPadShape, dsnToReal)
 
     const connectedWires: SpecificSesWire[] = []
     const stillUnusedWires: SpecificSesWire[] = []
@@ -202,7 +191,7 @@ export class PadTraceConnectorSolver extends BaseSolver {
         return new Point(transformed.x, transformed.y)
       })
 
-      if (doesWirePathIntersectBox(realWirePoints, realPadBounds)) {
+      if (doesWirePathIntersectShape(realWirePoints, realPadShape)) {
         connectedWires.push(specificWire)
         this.usedWires.push(specificWire)
       } else {
@@ -212,6 +201,72 @@ export class PadTraceConnectorSolver extends BaseSolver {
 
     this.unusedWires = stillUnusedWires
     return connectedWires
+  }
+
+  /**
+   * Transforms a pad shape from DSN coordinates to real (mm) coordinates.
+   */
+  private transformPadShape(shape: PadShape, transform: Matrix): PadShape {
+    switch (shape.type) {
+      case "circle": {
+        const circle = shape.shape
+        const center = applyToPoint(transform, {
+          x: circle.center.x,
+          y: circle.center.y,
+        })
+        // Scale the radius by the transform's scale factor
+        // For uniform scaling, we can use the x scale
+        const scale = Math.abs(transform.a)
+        return {
+          type: "circle",
+          shape: new Circle(new Point(center.x, center.y), circle.r * scale),
+        }
+      }
+
+      case "polygon": {
+        const polygon = shape.shape
+        const newPolygon = new Polygon()
+        for (const face of polygon.faces) {
+          const transformedPoints: Flatten.Point[] = []
+          for (const edge of face.edges) {
+            const start = applyToPoint(transform, {
+              x: edge.start.x,
+              y: edge.start.y,
+            })
+            transformedPoints.push(new Point(start.x, start.y))
+          }
+          if (transformedPoints.length > 0) {
+            transformedPoints.push(transformedPoints[0]!) // Close the polygon
+            newPolygon.addFace(transformedPoints)
+          }
+        }
+        return { type: "polygon", shape: newPolygon }
+      }
+
+      case "box": {
+        const box = shape.shape
+        const minPoint = applyToPoint(transform, {
+          x: box.xmin,
+          y: box.ymin,
+        })
+        const maxPoint = applyToPoint(transform, {
+          x: box.xmax,
+          y: box.ymax,
+        })
+        return {
+          type: "box",
+          shape: new Box(
+            Math.min(minPoint.x, maxPoint.x),
+            Math.min(minPoint.y, maxPoint.y),
+            Math.max(minPoint.x, maxPoint.x),
+            Math.max(minPoint.y, maxPoint.y),
+          ),
+        }
+      }
+
+      default:
+        return shape
+    }
   }
 
   getUnusedWiresConnectedToWire(wire: SpecificSesWire): Array<SpecificSesWire> {
@@ -237,7 +292,7 @@ export class PadTraceConnectorSolver extends BaseSolver {
       texts: [],
     }
 
-    // Visualize all pad bounds for debugging
+    // Visualize all pad shapes for debugging
     const dsnToReal = this.input.dsnToRealTransform
     const allPads = [
       ...this.queuedPads,
@@ -245,26 +300,53 @@ export class PadTraceConnectorSolver extends BaseSolver {
     ]
 
     for (const pad of allPads) {
-      const dsnPadBounds = calculatePadBounds(pad)
-      const minPoint = applyToPoint(dsnToReal, {
-        x: dsnPadBounds.xmin,
-        y: dsnPadBounds.ymin,
-      })
-      const maxPoint = applyToPoint(dsnToReal, {
-        x: dsnPadBounds.xmax,
-        y: dsnPadBounds.ymax,
-      })
+      const dsnPadShape = getPadShape(pad)
+      const realPadShape = this.transformPadShape(dsnPadShape, dsnToReal)
 
-      graphics.rects!.push({
-        center: {
-          x: (minPoint.x + maxPoint.x) / 2,
-          y: (minPoint.y + maxPoint.y) / 2,
-        },
-        width: Math.abs(maxPoint.x - minPoint.x),
-        height: Math.abs(maxPoint.y - minPoint.y),
-        stroke: "blue",
-        label: `pad-${pad.pin.pinId}`,
-      })
+      switch (realPadShape.type) {
+        case "circle": {
+          const circle = realPadShape.shape
+          graphics.circles!.push({
+            center: { x: circle.center.x, y: circle.center.y },
+            radius: circle.r,
+            stroke: "blue",
+            label: `pad-${pad.pin.pinId}`,
+          })
+          break
+        }
+
+        case "polygon": {
+          // For polygons, draw lines connecting the vertices
+          const polygon = realPadShape.shape
+          for (const face of polygon.faces) {
+            for (const edge of face.edges) {
+              graphics.lines!.push({
+                points: [
+                  { x: edge.start.x, y: edge.start.y },
+                  { x: edge.end.x, y: edge.end.y },
+                ],
+                strokeColor: "blue",
+              })
+            }
+          }
+          break
+        }
+
+        case "box": {
+          const box = realPadShape.shape
+          graphics.rects!.push({
+            center: {
+              x: (box.xmin + box.xmax) / 2,
+              y: (box.ymin + box.ymax) / 2,
+            },
+            width: Math.abs(box.xmax - box.xmin),
+            height: Math.abs(box.ymax - box.ymin),
+            stroke: "blue",
+            label: `pad-${pad.pin.pinId}`,
+          })
+          break
+        }
+      }
     }
 
     // Visualize unused wires in red
