@@ -1,5 +1,7 @@
+import Flatten from "@flatten-js/core"
 import type { SpecificDsnPad } from "../PadTraceConnectorSolver"
-import type { PadBounds } from "./types"
+
+const { Point, Box } = Flatten
 
 /**
  * Extracts the shape dimensions from a padstack.
@@ -98,21 +100,6 @@ function getPadstackDimensions(padstack: SpecificDsnPad["padstack"]): {
 }
 
 /**
- * Applies rotation to a point around the origin.
- */
-function rotatePoint(
-  x: number,
-  y: number,
-  rotationDegrees: number,
-): { x: number; y: number } {
-  const rotationRad = (rotationDegrees * Math.PI) / 180
-  return {
-    x: x * Math.cos(rotationRad) - y * Math.sin(rotationRad),
-    y: x * Math.sin(rotationRad) + y * Math.cos(rotationRad),
-  }
-}
-
-/**
  * Calculates the axis-aligned bounding box for a pad in DSN coordinates.
  *
  * The pad's final position is computed by:
@@ -122,8 +109,10 @@ function rotatePoint(
  *
  * The bounding box is then computed from the padstack dimensions,
  * taking into account the pin's rotation.
+ *
+ * @returns A flatten-js Box representing the pad's bounding box
  */
-export function calculatePadBounds(pad: SpecificDsnPad): PadBounds {
+export function calculatePadBounds(pad: SpecificDsnPad): Flatten.Box {
   const { pin, placementComponent, padstack } = pad
 
   // Get pin position relative to image origin
@@ -136,8 +125,12 @@ export function calculatePadBounds(pad: SpecificDsnPad): PadBounds {
   const componentY = place?.y ?? 0
   const componentRotation = place?.rotation ?? 0
 
-  // Apply component rotation to pin offset
-  const rotatedPinOffset = rotatePoint(pinX, pinY, componentRotation)
+  // Apply component rotation to pin offset using flatten-js Point rotation
+  const pinOffset = new Point(pinX, pinY)
+  const rotatedPinOffset = pinOffset.rotate(
+    (componentRotation * Math.PI) / 180,
+    new Point(0, 0),
+  )
 
   // Calculate final pad center in DSN coordinates
   const centerX = componentX + rotatedPinOffset.x
@@ -168,14 +161,10 @@ export function calculatePadBounds(pad: SpecificDsnPad): PadBounds {
     halfHeight = temp
   }
 
-  return {
-    centerX,
-    centerY,
-    halfWidth,
-    halfHeight,
-    minX: centerX - halfWidth,
-    maxX: centerX + halfWidth,
-    minY: centerY - halfHeight,
-    maxY: centerY + halfHeight,
-  }
+  return new Box(
+    centerX - halfWidth,
+    centerY - halfHeight,
+    centerX + halfWidth,
+    centerY + halfHeight,
+  )
 }
