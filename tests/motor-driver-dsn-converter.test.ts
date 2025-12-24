@@ -5,7 +5,7 @@ import { convertDsnToCircuitJson } from "../lib/dsn-to-circuit-json/DsnToCircuit
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("can convert motor driver dsn to circuit json", async () => {
-  const dsnPath = resolve("site/repro01/assets/motor_driver_input.dsn")
+  const dsnPath = resolve("pages/repros/repro01/assets/motor_driver_input.dsn")
   const content = await readFile(dsnPath, "utf-8")
 
   const circuitJson = convertDsnToCircuitJson(content)
