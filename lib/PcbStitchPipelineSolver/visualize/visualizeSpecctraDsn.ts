@@ -1,9 +1,6 @@
 import type { GraphicsObject } from "graphics-debug"
 import type { DsnPin, DsnPlace, SpectraDsn } from "dsnts"
-import {
-  applyToPoint,
-  type Matrix,
-} from "transformation-matrix"
+import { applyToPoint, type Matrix } from "transformation-matrix"
 import {
   BOUNDARY_COLOR,
   PAD_LAYER_COLORS,
