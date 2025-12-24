@@ -5,7 +5,7 @@ import { convertSesToCircuitJson } from "../lib/ses-to-circuit-json/SesToCircuit
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("convert motor driver ses to circuit json", async () => {
-  const sesPath = resolve("site/repro01/assets/output.ses")
+  const sesPath = resolve("pages/repros/repro01/assets/output.ses")
   const content = await readFile(sesPath, "utf-8")
 
   const circuitJson = convertSesToCircuitJson(content)

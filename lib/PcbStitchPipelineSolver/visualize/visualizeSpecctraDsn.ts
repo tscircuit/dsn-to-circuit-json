@@ -1,15 +1,11 @@
 import type { GraphicsObject } from "graphics-debug"
 import type { DsnPin, DsnPlace, SpectraDsn } from "dsnts"
-
-export const PAD_LAYER_COLORS = {
-  top: "#e74c3c", // Red for top layer
-  bottom: "#3498db", // Blue for bottom layer
-  drill: "#ff69b4", // Hot pink for drill layer
-}
-
-const BOUNDARY_COLOR = "#888888"
-const PAD_FILL_OPACITY = 0.3
-
+import { applyToPoint, type Matrix } from "transformation-matrix"
+import {
+  BOUNDARY_COLOR,
+  PAD_LAYER_COLORS,
+  PAD_FILL_OPACITY,
+} from "./utils/colors"
 /**
  * Convert DSN coordinates to world coordinates, applying component placement transform
  */
@@ -97,12 +93,19 @@ const getPinRadius = (
   return null
 }
 
+export interface VisualizeSpecctraDsnOptions {
+  /**
+   * Transformation matrix from DSN coordinates to real (mm) coordinates.
+   */
+  dsnToRealTransform: Matrix
+}
+
 /**
  * Visualize a SpectraDsn structure as graphics objects
  */
 export const visualizeSpecctraDsn = (
   dsn: SpectraDsn,
-  _opts?: object,
+  opts: VisualizeSpecctraDsnOptions,
 ): GraphicsObject => {
   const graphics: GraphicsObject = {
     lines: [],
@@ -110,6 +113,9 @@ export const visualizeSpecctraDsn = (
     rects: [],
     texts: [],
   }
+
+  const { dsnToRealTransform } = opts
+  const scaleFactor = dsnToRealTransform.a
 
   const imageMap = buildImageMap(dsn)
   const padstackMap = buildPadstackMap(dsn)
@@ -126,14 +132,14 @@ export const visualizeSpecctraDsn = (
           const x = coords[i]
           const y = coords[i + 1]
           if (x !== undefined && y !== undefined) {
-            points.push({ x, y })
+            points.push(applyToPoint(dsnToRealTransform, { x, y }))
           }
         }
         if (points.length >= 2) {
           graphics.lines!.push({
             points,
             strokeColor: BOUNDARY_COLOR,
-            strokeWidth: path.width ?? 1,
+            strokeWidth: (path.width ?? 1) * scaleFactor,
             label: "boundary",
           })
         }
@@ -148,13 +154,14 @@ export const visualizeSpecctraDsn = (
         rect.x2 !== undefined &&
         rect.y2 !== undefined
       ) {
-        const width = Math.abs(rect.x2 - rect.x1)
-        const height = Math.abs(rect.y2 - rect.y1)
+        const center = applyToPoint(dsnToRealTransform, {
+          x: (rect.x1 + rect.x2) / 2,
+          y: (rect.y1 + rect.y2) / 2,
+        })
+        const width = Math.abs(rect.x2 - rect.x1) * scaleFactor
+        const height = Math.abs(rect.y2 - rect.y1) * scaleFactor
         graphics.rects!.push({
-          center: {
-            x: (rect.x1 + rect.x2) / 2,
-            y: (rect.y1 + rect.y2) / 2,
-          },
+          center,
           width,
           height,
           stroke: BOUNDARY_COLOR,
@@ -183,29 +190,20 @@ export const visualizeSpecctraDsn = (
       const layerColor =
         side === "back" ? PAD_LAYER_COLORS.bottom : PAD_LAYER_COLORS.top
 
-      // Add component label
-      graphics.texts!.push({
-        x: place.x ?? 0,
-        y: place.y ?? 0,
-        text: componentRef,
-        color: layerColor,
-        fontSize: 500,
-        anchorSide: "center",
-      })
-
       // Visualize each pin
       for (const pin of pins) {
         const pinX = pin.x ?? 0
         const pinY = pin.y ?? 0
         const pinId = pin.pinId ?? ""
 
-        const worldPos = transformPinPosition(pinX, pinY, place)
+        const dsnPos = transformPinPosition(pinX, pinY, place)
+        const realPos = applyToPoint(dsnToRealTransform, dsnPos)
 
         // Get pad radius from padstack, default to 400 if not found
-        const radius = getPinRadius(pin, padstackMap) ?? 400
+        const radius = (getPinRadius(pin, padstackMap) ?? 400) * scaleFactor
 
         graphics.circles!.push({
-          center: worldPos,
+          center: realPos,
           radius,
           stroke: layerColor,
           fill: `${layerColor}${Math.round(PAD_FILL_OPACITY * 255)

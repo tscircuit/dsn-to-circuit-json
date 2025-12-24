@@ -11,7 +11,7 @@
     "paths": {
       "tests/*": ["./tests/*"],
       "pages/*": ["./pages/*"],
-      "lib/*": ["./lib/*"],
+      "lib/*": ["./lib/*"]
     },
 
     // Bundler mode
