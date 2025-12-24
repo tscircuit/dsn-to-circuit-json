@@ -1,46 +1,23 @@
 import type { GraphicsObject } from "graphics-debug"
 import type { DsnPin, DsnPlace, SpectraDsn } from "dsnts"
-import { applyToPoint, type Matrix } from "transformation-matrix"
+import {
+  applyToPoint,
+  type Matrix,
+} from "transformation-matrix"
 import {
   BOUNDARY_COLOR,
   PAD_LAYER_COLORS,
   PAD_FILL_OPACITY,
 } from "./utils/colors"
-/**
- * Convert DSN coordinates to world coordinates, applying component placement transform
- */
-const transformPinPosition = (
-  pinX: number,
-  pinY: number,
-  place: DsnPlace,
-): { x: number; y: number } => {
-  const placeX = place.x ?? 0
-  const placeY = place.y ?? 0
-  const rotation = place.rotation ?? 0
-  const side = place.side ?? "front"
 
-  // Convert rotation to radians
-  const radians = (rotation * Math.PI) / 180
-
-  // Apply rotation around origin
-  let rotatedX = pinX * Math.cos(radians) - pinY * Math.sin(radians)
-  const rotatedY = pinX * Math.sin(radians) + pinY * Math.cos(radians)
-
-  // Mirror X for back side
-  if (side === "back") {
-    rotatedX = -rotatedX
-  }
-
-  // Translate to component position
-  return {
-    x: placeX + rotatedX,
-    y: placeY + rotatedY,
-  }
+interface PadShapeInfo {
+  type: "circle" | "rect" | "polygon"
+  radius?: number
+  width?: number
+  height?: number
+  coordinates?: number[]
 }
 
-/**
- * Build a map from imageId to DsnImage for quick lookup
- */
 const buildImageMap = (dsn: SpectraDsn): Map<string, any> => {
   const imageMap = new Map<string, any>()
   const images = dsn.library?.images ?? []
@@ -67,25 +44,72 @@ const buildPadstackMap = (dsn: SpectraDsn): Map<string, any> => {
 }
 
 /**
- * Get pin radius from padstack
+ * Get pad shape info from padstack
  */
-const getPinRadius = (
+const getPadShapeInfo = (
   pin: DsnPin,
   padstackMap: Map<string, any>,
-): number | null => {
+): PadShapeInfo | null => {
   const padstackId = pin.padstackId
   if (!padstackId) return null
 
   const padstack = padstackMap.get(padstackId)
   if (!padstack) return null
 
-  // Check shapes for circle diameter
+  // Check shapes for different types
   const shapes = padstack.shapes ?? []
   for (const shape of shapes) {
     const otherChildren = shape.otherChildren ?? []
     for (const child of otherChildren) {
+      // Circle shape
       if (child.token === "circle" && child.diameter !== undefined) {
-        return child.diameter / 2
+        return {
+          type: "circle",
+          radius: child.diameter / 2,
+        }
+      }
+
+      // Rectangle shape
+      if (child.token === "rect") {
+        const x1 = child.x1 ?? 0
+        const y1 = child.y1 ?? 0
+        const x2 = child.x2 ?? 0
+        const y2 = child.y2 ?? 0
+        return {
+          type: "rect",
+          width: Math.abs(x2 - x1),
+          height: Math.abs(y2 - y1),
+        }
+      }
+
+      // Polygon shape
+      if (child.token === "polygon") {
+        const coords: number[] = child.coordinates ?? []
+        if (coords.length >= 4) {
+          // Calculate bounding box to get width/height
+          let minX = Infinity
+          let maxX = -Infinity
+          let minY = Infinity
+          let maxY = -Infinity
+
+          for (let i = 0; i < coords.length; i += 2) {
+            const x = coords[i]
+            const y = coords[i + 1]
+            if (x !== undefined && y !== undefined) {
+              minX = Math.min(minX, x)
+              maxX = Math.max(maxX, x)
+              minY = Math.min(minY, y)
+              maxY = Math.max(maxY, y)
+            }
+          }
+
+          return {
+            type: "polygon",
+            width: maxX - minX,
+            height: maxY - minY,
+            coordinates: coords,
+          }
+        }
       }
     }
   }
@@ -196,21 +220,75 @@ export const visualizeSpecctraDsn = (
         const pinY = pin.y ?? 0
         const pinId = pin.pinId ?? ""
 
-        const dsnPos = transformPinPosition(pinX, pinY, place)
-        const realPos = applyToPoint(dsnToRealTransform, dsnPos)
+        const realPos = applyToPoint(dsnToRealTransform, { x: pinX, y: pinY })
+        const shapeInfo = getPadShapeInfo(pin, padstackMap)
 
-        // Get pad radius from padstack, default to 400 if not found
-        const radius = (getPinRadius(pin, padstackMap) ?? 400) * scaleFactor
+        const fillColor = `${layerColor}${Math.round(PAD_FILL_OPACITY * 255)
+          .toString(16)
+          .padStart(2, "0")}`
+        const label = `${componentRef}-${pinId}`
 
-        graphics.circles!.push({
-          center: realPos,
-          radius,
-          stroke: layerColor,
-          fill: `${layerColor}${Math.round(PAD_FILL_OPACITY * 255)
-            .toString(16)
-            .padStart(2, "0")}`,
-          label: `${componentRef}-${pinId}`,
-        })
+        if (!shapeInfo) {
+          // Default to circle with radius 400 if no shape info found
+          graphics.circles!.push({
+            center: realPos,
+            radius: 400 * scaleFactor,
+            stroke: layerColor,
+            fill: fillColor,
+            label,
+          })
+        } else if (shapeInfo.type === "circle") {
+          graphics.circles!.push({
+            center: realPos,
+            radius: (shapeInfo.radius ?? 400) * scaleFactor,
+            stroke: layerColor,
+            fill: fillColor,
+            label,
+          })
+        } else if (shapeInfo.type === "rect") {
+          graphics.rects!.push({
+            center: realPos,
+            width: (shapeInfo.width ?? 800) * scaleFactor,
+            height: (shapeInfo.height ?? 800) * scaleFactor,
+            stroke: layerColor,
+            fill: fillColor,
+            label,
+          })
+        } else if (shapeInfo.type === "polygon" && shapeInfo.coordinates) {
+          // Transform polygon coordinates to real coordinates
+          // Polygon coords are relative to pin center, so we need to
+          // translate them to pin position first, then apply full transform
+          const coords = shapeInfo.coordinates
+
+          const points: { x: number; y: number }[] = []
+          for (let i = 0; i < coords.length; i += 2) {
+            const localX = coords[i]
+            const localY = coords[i + 1]
+            if (localX !== undefined && localY !== undefined) {
+              // Polygon vertex in pin-local coordinates, offset by pin position
+              const pinLocalPos = { x: pinX + localX, y: pinY + localY }
+              points.push(applyToPoint(dsnToRealTransform, pinLocalPos))
+            }
+          }
+
+          // Close the polygon if not already closed
+          if (points.length >= 3) {
+            const first = points[0]!
+            const last = points[points.length - 1]!
+            if (first.x !== last.x || first.y !== last.y) {
+              points.push({ x: first.x, y: first.y })
+            }
+          }
+
+          if (points.length >= 3) {
+            graphics.lines!.push({
+              points,
+              strokeColor: layerColor,
+              strokeWidth: 0.05,
+              label,
+            })
+          }
+        }
       }
     }
   }
