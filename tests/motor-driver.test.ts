@@ -6,9 +6,11 @@ import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("convert motor driver ses to circuit json", async () => {
   const sesPath = resolve("pages/repros/repro01/assets/output.ses")
+  const dsnPath = resolve("pages/repros/repro01/assets/motor_driver_input.dsn")
   const content = await readFile(sesPath, "utf-8")
+  const dsnContent = await readFile(dsnPath, "utf-8")
 
-  const circuitJson = convertSesToCircuitJson(content)
+  const circuitJson = convertSesToCircuitJson(content, dsnContent)
 
   expect(circuitJson).toBeDefined()
   expect(circuitJson.length).toBeGreaterThan(0)

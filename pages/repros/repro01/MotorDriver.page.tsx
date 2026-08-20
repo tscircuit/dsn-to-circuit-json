@@ -19,7 +19,10 @@ export default function TraceViewer01Fixture() {
   const solver = useMemo(() => {
     try {
       // Parse SES for traces and vias
-      const sesCircuitJson = convertSesToCircuitJson(MOTOR_DRIVER_SES)
+      const sesCircuitJson = convertSesToCircuitJson(
+        MOTOR_DRIVER_SES,
+        MOTOR_DRIVER_DSN,
+      )
 
       const traces = sesCircuitJson.filter(
         (el): el is PcbTrace => el.type === "pcb_trace",

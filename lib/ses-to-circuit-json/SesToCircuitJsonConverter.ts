@@ -29,7 +29,7 @@ import { PcbStitchPipelineSolver } from "../PcbStitchPipelineSolver/PcbStitchPip
  *
  * Usage:
  * ```typescript
- * const converter = new SesToCircuitJsonConverter(sesString)
+ * const converter = new SesToCircuitJsonConverter(sesString, dsnString)
  * converter.runUntilFinished()
  * const circuitJson = converter.getOutput()
  * ```
@@ -47,7 +47,7 @@ export class SesToCircuitJsonConverter {
   /**
    * Create a new converter from a SES string.
    * @param sesString - The raw SES file content as a string
-   * @param options - Optional configuration including original circuit JSON
+   * @param dsnString - The DSN source file corresponding to the SES result
    */
   constructor(sesString: string, dsnString: string) {
     // Parse the SES file using dsnts parseSpectraSes
@@ -119,11 +119,19 @@ export class SesToCircuitJsonConverter {
 /**
  * Convenience function to convert a SES string to Circuit JSON.
  * @param sesString - The raw SES file content as a string
- * @param options - Optional configuration including original circuit JSON
+ * @param dsnString - The DSN source file corresponding to the SES result
  * @returns The converted Circuit JSON array
  */
-export function convertSesToCircuitJson(sesString: string): CircuitJson {
-  const converter = new SesToCircuitJsonConverter(sesString)
+export function convertSesToCircuitJson(
+  sesString: string,
+  dsnString?: string,
+): CircuitJson {
+  if (!dsnString) {
+    throw new Error(
+      "convertSesToCircuitJson requires the corresponding DSN source",
+    )
+  }
+  const converter = new SesToCircuitJsonConverter(sesString, dsnString)
   converter.runUntilFinished()
   return converter.getOutput()
 }

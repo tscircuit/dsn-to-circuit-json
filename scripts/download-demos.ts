@@ -7,35 +7,35 @@ type DemoSpec = {
   readonly filename: string
 }
 
-// GitHub raw content URLs for freerouting test DSN files
-// See: https://github.com/freerouting/freerouting/tree/master/tests
+// GitHub raw content URLs for freerouting fixture DSN files
+// See: https://github.com/freerouting/freerouting/tree/master/fixtures
 const demos: DemoSpec[] = [
   {
-    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/tests/empty_board.dsn",
+    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/fixtures/empty_board.dsn",
     filename: "empty_board.dsn",
   },
   {
-    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/tests/BBD_Mars-64.dsn",
+    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/fixtures/Issue555-BBD_Mars-64.dsn",
     filename: "BBD_Mars-64.dsn",
   },
   {
-    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/tests/Issue110-testPCBSpecctraFile.dsn",
+    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/fixtures/Issue110-testPCBSpecctraFile.dsn",
     filename: "Issue110-testPCBSpecctraFile.dsn",
   },
   {
-    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/tests/Issue270-non-ansi_bracket.dsn",
+    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/fixtures/Issue270-non-ansi_bracket.dsn",
     filename: "Issue270-non-ansi_bracket.dsn",
   },
   {
-    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/tests/Issue313-FastTest.dsn",
+    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/fixtures/Issue313-FastTest.dsn",
     filename: "Issue313-FastTest.dsn",
   },
   {
-    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/tests/Issue145-smoothieboard.dsn",
+    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/fixtures/Issue145-smoothieboard.dsn",
     filename: "Issue145-smoothieboard.dsn",
   },
   {
-    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/tests/Issue367-Charger.dsn",
+    url: "https://raw.githubusercontent.com/freerouting/freerouting/master/fixtures/Issue367-Charger.dsn",
     filename: "Issue367-Charger.dsn",
   },
 ]

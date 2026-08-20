@@ -6,9 +6,11 @@ import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("can convert Example.ses to circuit json", async () => {
   const sesPath = resolve("tests/assets/Example.ses")
+  const dsnPath = resolve("demos/Issue313-FastTest.dsn")
   const content = await readFile(sesPath, "utf-8")
+  const dsnContent = await readFile(dsnPath, "utf-8")
 
-  const circuitJson = convertSesToCircuitJson(content)
+  const circuitJson = convertSesToCircuitJson(content, dsnContent)
 
   expect(circuitJson).toBeDefined()
   expect(circuitJson.length).toBeGreaterThan(0)
