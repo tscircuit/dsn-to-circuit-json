@@ -21,6 +21,7 @@ export default function LGA51x4_net15_bottom_onlyFixture() {
       // Parse SES for traces and vias
       const sesCircuitJson = convertSesToCircuitJson(
         LGA51x4_net15_bottom_only_SES,
+        LGA51x4_net15_bottom_only_DSN,
       )
 
       const traces = sesCircuitJson.filter(

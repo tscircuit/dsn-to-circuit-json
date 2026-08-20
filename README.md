@@ -40,12 +40,13 @@ import fs from "fs"
 
 // Option 1: Using the converter class
 const sesContent = fs.readFileSync("path/to/file.ses", "utf-8")
-const converter = new SesToCircuitJsonConverter(sesContent)
+const dsnContent = fs.readFileSync("path/to/file.dsn", "utf-8")
+const converter = new SesToCircuitJsonConverter(sesContent, dsnContent)
 converter.runUntilFinished()
 const circuitJson = converter.getOutput()
 
 // Option 2: Using the convenience function
-const circuitJson = convertSesToCircuitJson(sesContent)
+const circuitJson = convertSesToCircuitJson(sesContent, dsnContent)
 
 console.log(JSON.stringify(circuitJson, null, 2))
 ```
