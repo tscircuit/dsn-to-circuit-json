@@ -1,5 +1,4 @@
 import { DsnToCircuitJsonConverterStage } from "../types"
-import { applyToPoint, compose, rotate, translate } from "transformation-matrix"
 
 /**
  * CollectPadsStage creates pcb_smtpad, pcb_plated_hole, source_port, and pcb_port
@@ -93,7 +92,6 @@ export class CollectPadsStage extends DsnToCircuitJsonConverterStage {
             componentY,
             componentRotation,
             componentLayer,
-            dsnToCircuitJsonTransformMatrix,
           )
         }
       }
@@ -113,7 +111,6 @@ export class CollectPadsStage extends DsnToCircuitJsonConverterStage {
     componentY: number,
     componentRotation: number,
     componentLayer: string,
-    transformMatrix: any,
   ): void {
     // dsnts uses underscored properties
     // DSN pin format: (pin <padstack_id> <pin_number> <x> <y>)
@@ -226,34 +223,21 @@ export class CollectPadsStage extends DsnToCircuitJsonConverterStage {
       } as any)
       pcbSmtpadId = smtpad.pcb_smtpad_id
     } else if (padstackInfo.shape === "polygon") {
-      // For polygon pads, calculate bounding box and use rect approximation
-      const coords = padstackInfo.coordinates || []
+      // DSN padstack polygons are pad-local: (polygon layer aperture x1 y1 …).
+      // Circuit JSON already has pcb_smtpad shape "polygon" with absolute points.
+      const pinRotation = pin.rotation ?? 0
+      const points = mapDsnPolygonPadPoints({
+        coordinates: padstackInfo.coordinates || [],
+        scale: DSN_TO_MM_SCALE,
+        rotationDegrees: componentRotation + pinRotation,
+        origin: padPosition,
+      })
 
-      if (coords.length >= 4) {
-        let minX = Infinity
-        let maxX = -Infinity
-        let minY = Infinity
-        let maxY = -Infinity
-
-        for (let i = 0; i < coords.length; i += 2) {
-          if (coords[i] !== undefined && coords[i + 1] !== undefined) {
-            minX = Math.min(minX, coords[i]!)
-            maxX = Math.max(maxX, coords[i]!)
-            minY = Math.min(minY, coords[i + 1]!)
-            maxY = Math.max(maxY, coords[i + 1]!)
-          }
-        }
-
-        const width = Math.abs(maxX - minX) * DSN_TO_MM_SCALE
-        const height = Math.abs(maxY - minY) * DSN_TO_MM_SCALE
-
+      if (points.length >= 3) {
         const smtpad = this.ctx.db.pcb_smtpad.insert({
           pcb_component_id: componentId,
-          x: padPosition.x,
-          y: padPosition.y,
-          shape: "rect",
-          width: width || 0.1,
-          height: height || 0.1,
+          shape: "polygon",
+          points,
           layer,
           port_hints: [pinId],
         } as any)
@@ -310,4 +294,56 @@ export class CollectPadsStage extends DsnToCircuitJsonConverterStage {
     }
     return "top"
   }
+}
+
+const CLOSE_VERTEX_EPS = 1e-9
+
+function rotateOffset(
+  x: number,
+  y: number,
+  rotationRad: number,
+): { x: number; y: number } {
+  return {
+    x: x * Math.cos(rotationRad) - y * Math.sin(rotationRad),
+    y: x * Math.sin(rotationRad) + y * Math.cos(rotationRad),
+  }
+}
+
+/**
+ * Scale, rotate, and translate DSN padstack polygon vertices into Circuit JSON
+ * millimeters. Drops a duplicate closing vertex when the path is closed.
+ */
+function mapDsnPolygonPadPoints(args: {
+  coordinates: number[]
+  scale: number
+  rotationDegrees: number
+  origin: { x: number; y: number }
+}): Array<{ x: number; y: number }> {
+  const { coordinates, scale, rotationDegrees, origin } = args
+  const rotationRad = (rotationDegrees * Math.PI) / 180
+  const points: Array<{ x: number; y: number }> = []
+
+  for (let i = 0; i + 1 < coordinates.length; i += 2) {
+    const x = coordinates[i]
+    const y = coordinates[i + 1]
+    if (x === undefined || y === undefined) continue
+    const rotated = rotateOffset(x * scale, y * scale, rotationRad)
+    points.push({
+      x: origin.x + rotated.x,
+      y: origin.y + rotated.y,
+    })
+  }
+
+  if (points.length >= 2) {
+    const first = points[0]!
+    const last = points[points.length - 1]!
+    if (
+      Math.abs(first.x - last.x) < CLOSE_VERTEX_EPS &&
+      Math.abs(first.y - last.y) < CLOSE_VERTEX_EPS
+    ) {
+      points.pop()
+    }
+  }
+
+  return points
 }
