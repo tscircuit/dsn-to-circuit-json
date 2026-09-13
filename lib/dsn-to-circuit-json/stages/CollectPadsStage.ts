@@ -1,5 +1,6 @@
 import { DsnToCircuitJsonConverterStage } from "../types"
 import { applyToPoint, compose, rotate, translate } from "transformation-matrix"
+import type { DsnPlaceControl } from "dsnts"
 
 /**
  * CollectPadsStage creates pcb_smtpad, pcb_plated_hole, source_port, and pcb_port
@@ -213,12 +214,26 @@ export class CollectPadsStage extends DsnToCircuitJsonConverterStage {
     } else if (padstackInfo.shape === "rect") {
       const width = (padstackInfo.width ?? 1000) * DSN_TO_MM_SCALE
       const height = (padstackInfo.height ?? 1000) * DSN_TO_MM_SCALE
+      const pinRotation = pin.rotation ?? 0
+      let padRotation = componentRotation + pinRotation
+      if (componentLayer === "bottom") {
+        const placeControl = this.ctx.specctraDsn.placement?.otherChildren.find(
+          (child) => child.token === "place_control",
+        ) as DsnPlaceControl | undefined
+        // Back-side mirroring reverses local angles. DSN defaults to mirror_first.
+        padRotation =
+          placeControl?.settings.flip_style === "rotate_first"
+            ? -padRotation
+            : componentRotation - pinRotation
+      }
+      const isRotated = padRotation % 180 !== 0
 
       const smtpad = this.ctx.db.pcb_smtpad.insert({
         pcb_component_id: componentId,
         x: padPosition.x,
         y: padPosition.y,
-        shape: "rect",
+        shape: isRotated ? "rotated_rect" : "rect",
+        ...(isRotated ? { ccw_rotation: padRotation } : {}),
         width,
         height,
         layer,
